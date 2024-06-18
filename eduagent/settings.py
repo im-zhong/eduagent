@@ -62,17 +62,7 @@ class DatabaseConfig(BaseModel):
         }
 
 
-class PGVectorSettings(BaseModel):
-    host: str = "db.eduagent"
-    port: int = 5432
-    user: str = "ysu_keg"
-    password: str = "123456789"
-    dbname: str = "eduagent"
-    collection_name: str = "demo_for_rag"
 
-    @property
-    def connection_string(self) -> str:
-        return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
 
 
 class PGVectorSettings(BaseModel):
