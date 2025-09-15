@@ -17,9 +17,7 @@ services:
       dockerfile: dev.Dockerfile
       args:
         UID: ${UID}
-        GID: ${GID}
         USER: ${USER}
-        GROUP: ${GROUP}
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent:${USER}
     # only for test
@@ -38,8 +36,10 @@ services:
     volumes:
       - .:/home/${USER}/eduagent
       # 为什么需要git config？因为我们要在容器内部操作git
-      - ~/.gitconfig:/home/${USER}/.gitconfig
-      - ~/.git-credentials:/home/${USER}/.git-credentials
+      - ~/.gitconfig:/home/${USER}/.gitconfig:ro
+      - ~/.git-credentials:/home/${USER}/.git-credentials:ro
+      # 为了能在容器内部访问git ssh，需要把ssh目录也挂载进来
+      - ~/.ssh:/home/${USER}/.ssh:ro
     networks:
       eduagent-network: # ipv4_address: 172.16.0.8
     depends_on:
@@ -64,10 +64,8 @@ services:
     image: eduagent:${USER}
     command: ["ui"]
     hostname: eduagent-ui
-    # expose:
-    #   - 8501
-    ports:
-      - "9537:8501"
+    expose:
+      - 8501
     restart: unless-stopped
     volumes:
       - .:/home/${USER}/eduagent
@@ -82,8 +80,6 @@ services:
     image: postgres:17
     restart: unless-stopped
     hostname: eduagent-db
-    # ports:
-    #   - "5432:5432"
     expose:
       - 5432
     environment:
