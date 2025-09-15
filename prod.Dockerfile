@@ -14,7 +14,7 @@ ARG USER
 # 安装 sudo 和必要的工具
 # 只有安装了sudo 才有 /etc/sudoers的配置文件
 RUN apt update && \
-    apt install -y sudo curl && \
+    apt install -y curl && \
     apt autoremove -y && \
     apt clean
 
@@ -32,8 +32,7 @@ RUN apt update && \
 
 # 创建用户和组（确保容器内有 useradd 或 adduser 命令）
 # RUN getent group ${GROUP} || groupadd -g ${GID} ${GROUP}
-RUN useradd -u ${UID} -m ${USER} -s /bin/bash && \
-    usermod -aG sudo ${USER}
+RUN useradd -u ${UID} -m ${USER} -s /bin/bash
 
 USER ${USER}
 
@@ -62,7 +61,7 @@ WORKDIR /home/${USER}/eduagent
 
 # The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime.
 # You can specify whether the port listens on TCP or UDP, and the default is TCP if you don't specify a protocol.
-EXPOSE 8000
+# EXPOSE 8000
 
 # An ENTRYPOINT allows you to configure a container that will run as an executable.
 # 必须启动一个进程，否则容器启动就会立刻退出
