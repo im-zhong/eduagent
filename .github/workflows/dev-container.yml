@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Deploy FastAPI
-        run: docker compose -f dev.docker-compose.yml up -d --build
+        run: docker compose -f prod.docker-compose.yml up -d
 
       - name: Wait for services to be ready
         run: |
@@ -61,7 +61,7 @@ jobs:
           sleep 10  # 或者用 curl 循环检测 http://localhost:8000/hello
 
       - name: Run integration tests
-        run: docker-compose -f ddev.ocker-compose.yaml exec -T eduagent-dev PYTHONPATH=. uv run pytest tests/integration -v
+        run: docker-compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest tests/integration -v
 
       - name: Tear down
-        run: docker-compose -f dev.docker-compose.yaml down
+        run: docker-compose -f prod.docker-compose.yaml down
