@@ -52,6 +52,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg UID=$(id -u) \
+            --build-arg USER=$USER \
+            -f prod.Dockerfile \
+            -t eduagent-prod .
+
       - name: Deploy FastAPI
         run: docker compose -f prod.docker-compose.yaml up -d
 
