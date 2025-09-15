@@ -1,0 +1,76 @@
+# docker-compose.deploy.yml（部署环境覆盖配置）
+# 因为https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#merging-rules
+# 因为docker compose的合并规则，我们无法做到在dev里面覆盖prod的ports映射
+# 所以只能维护两个独立的compose file了
+
+# 目前只支持在mac，Linux，wsl2里面进行开发
+
+# dev 和 prod 的docker compose file区别也会比较大
+# 如果非得弄成两个文件合并的方式，灵活性会大大下降
+# 所以付出一些维护代价，维持两个文件，保证灵活性
+
+# 感觉不对呀，还是得在dev docker compose里面进行测试
+# 这样才能跑集成测试啊，prod部署方式都没有那个dev容器，怎么跑测试呢？
+# 只能用curl之类的命令测试啊。。。服了 TODO(zhangzhong)
+
+name: eduagent-prod-${USER}
+
+# https://docs.docker.com/reference/compose-file/services/
+services:
+  eduagent-api:
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
+      args:
+        UID: ${UID}
+        USER: ${USER}
+    # The image field allows you to specify the name and tag of the image that will be built.
+    image: eduagent-prod:${USER}
+    command: ["api"]
+    hostname: eduagent-api
+    expose:
+      - 8000
+    ports:
+      - 8000:8000
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      eduagent-network:
+    depends_on:
+      - eduagent-db
+
+  eduagent-ui:
+    image: eduagent-prod:${USER}
+    command: ["ui"]
+    hostname: eduagent-ui
+    ports:
+      - 8501:8501
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      eduagent-network:
+    depends_on:
+      - eduagent-api
+      - eduagent-db
+
+  eduagent-db:
+    image: postgres:17
+    restart: unless-stopped
+    hostname: eduagent-db
+    expose:
+      - 5432
+    environment:
+      # all set to default so you could just type
+      # psql -h localhost to connent
+      - POSTGRES_USER=ysu_keg
+      - POSTGRES_PASSWORD=123456789
+      - POSTGRES_DB=social_robot
+    networks:
+      - eduagent-network
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+networks:
+  eduagent-network:

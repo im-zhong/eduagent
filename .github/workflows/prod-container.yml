@@ -1,0 +1,56 @@
+# name: CI
+
+# on:
+#   push:
+#     branches: ["main", "devops"]
+#   pull_request:
+#     branches: ["main"]
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v5
+
+#       - name: Build Docker image
+#         uses: docker/setup-buildx-action@v3
+
+#       - name: Log in to GHCR
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+
+#       - name: Build and push Docker image
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: .
+#           file: dev.Dockerfile
+#           push: true
+#           tags: ghcr.io/${{ github.repository }}/eduagent:latest
+# 这个项目不太适合放到仓库里面，因为他启动需要代码，我们都把代码clone下来了，直接在本地build then deploy就行了
+
+# 首先checkout code，然后准备各种环境，然后使用deploy部署，然后运行集成测试！
+# 所以测试要区分单元测试（在第一个workflow里面），和集成测试（本workflow）
+
+name: Deploy in Prod mode
+
+on:
+  push:
+    branches: ["main", "devops"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Deploy FastAPI
+        run: ./deploy.sh --prod

@@ -1,9 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-
-
-
 # 初始化生产模式标志
 production_mode=false
 
@@ -51,7 +48,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Step 1: Check required environment variables
-required_vars=("UID" "GID" "USER" "GROUP")
+required_vars=("UID" "USER")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -67,25 +64,12 @@ if [ ${#missing_vars[@]} -gt 0 ]; then
     exit 1
 fi
 
-# Step 2: Create etc directory and copy files
-mkdir -p etc
-
-# Copy configuration files
-copy_files=("$HOME/.gitconfig" "$HOME/.git-credentials")
-for file in "${copy_files[@]}"; do
-    if [ ! -f "$file" ]; then
-        echo "ERROR: Missing required file: $file"
-        exit 1
-    fi
-    cp -v "$file" etc/
-done
-
 # Check for settings.toml
-if [ ! -f "etc/settings.toml" ]; then
-    echo "ERROR: Missing required configuration file: etc/settings.toml"
-    echo "Please create the file with appropriate settings before continuing."
-    exit 1
-fi
+# if [ ! -f "etc/settings.toml" ]; then
+#     echo "ERROR: Missing required configuration file: etc/settings.toml"
+#     echo "Please create the file with appropriate settings before continuing."
+#     exit 1
+# fi
 
 # Step 3: Start Docker Compose
 echo "Starting Docker Compose..."
@@ -94,7 +78,7 @@ echo "Starting Docker Compose..."
 echo "Starting Docker Compose..."
 
 if [ "$production_mode" = true ]; then
-    compose_files=(-f docker-compose.prod.yaml)
+    compose_files=(-f prod.docker-compose.yaml)
     echo "Starting in PRODUCTION mode with compose files: ${compose_files[*]}"
 
     if [ -n "${twitter_service_port:-}" ]; then
@@ -102,7 +86,7 @@ if [ "$production_mode" = true ]; then
         export TWITTER_SERVICE_PORT="$twitter_service_port"
     fi
 else
-    compose_files=(-f docker-compose.dev.yaml)
+    compose_files=(-f dev.docker-compose.yaml)
     echo "Starting in DEVELOPMENT mode"
 fi
 
