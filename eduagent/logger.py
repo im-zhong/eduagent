@@ -2,7 +2,8 @@
 # zhangzhong
 # https://loguru.readthedocs.io/en/stable/overview.html
 
-from loguru import Logger
+from logging import Logger
+
 from loguru import logger as loguru_logger
 
 from eduagent.defs import defs
@@ -27,7 +28,7 @@ def new_logger() -> Logger:
         format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}",
     )
 
-    return loguru_logger
+    return loguru_logger  # type: ignore
 
 
 logger: Logger = new_logger()
