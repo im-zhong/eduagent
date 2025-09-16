@@ -1,6 +1,8 @@
 # streamlit_app.py
-import streamlit as st
+from http import HTTPStatus
+
 import requests
+import streamlit as st
 
 st.title("Hello FastAPI via Streamlit")
 
@@ -10,7 +12,7 @@ api_url = "http://eduagent-api:8000/hello"
 if st.button("Say Hello"):
     try:
         response = requests.get(api_url)
-        if response.status_code == 200:
+        if response.status_code == HTTPStatus.OK:
             data = response.json()
             st.success(data)
         else:
