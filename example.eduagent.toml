@@ -1,0 +1,12 @@
+[project]
+api_v1_str = "v1"
+
+[llm]
+base_llm = "qwen"
+
+[deepseek]
+api_key = "NOKEY"
+api_base = "https://api.deepseek.com"
+
+[database]
+user = "root"
