@@ -64,7 +64,7 @@ repos:
       # Run the linter.
       - id: ruff
         args: [--fix]
-        exclude: retriever.py
+        # exclude: retriever.py
       # Run the formatter.
       - id: ruff-format
 
@@ -73,6 +73,6 @@ repos:
     hooks:
       - id: pyright
         additional_dependencies: []
-        args: []
-        language: system
-        exclude: retriever.py
+        args: ["--warnings", "--project=pyproject.toml"]
+        language: system # 要自己保证 .venv 里装好了 pyright，否则 hook 会失败。
+        # exclude: retriever.py

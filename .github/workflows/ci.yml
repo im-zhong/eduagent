@@ -31,5 +31,8 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
+      - name: Type check
+        run: uv run pyright --warnings --project=pyproject.toml
+
       - name: Run tests
         run: PYTHONPATH=. uv run pytest tests/unit -v
