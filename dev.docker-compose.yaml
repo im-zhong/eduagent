@@ -21,7 +21,8 @@ services:
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent:${USER}
     # only for test
-    entrypoint: ["/bin/bash", "-c", "tail -f /dev/null"]
+    # entrypoint: ["/bin/bash", "-c", "tail -f /dev/null"]
+    command: ["dev"]
     hostname: eduagent-dev
     # 我懂了，这个东西会覆盖docker默认规则生成的名字，也就是projectname servicename
     # expose:

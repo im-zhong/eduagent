@@ -59,7 +59,7 @@ WORKDIR /home/${USER}/eduagent
 
 # The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime.
 # You can specify whether the port listens on TCP or UDP, and the default is TCP if you don't specify a protocol.
-EXPOSE 8000
+# EXPOSE 8000
 
 # An ENTRYPOINT allows you to configure a container that will run as an executable.
 # 必须启动一个进程，否则容器启动就会立刻退出

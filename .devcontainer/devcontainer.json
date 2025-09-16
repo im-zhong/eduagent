@@ -10,6 +10,9 @@
   "workspaceFolder": "/home/${localEnv:USER}/eduagent",
   "shutdownAction": "stopCompose", // 关闭 VS Code 时停止整个 Compose 环境
 
+  // ✅ runs on host before container creation
+  "initializeCommand": "./check_env.sh",
+
   // // 关键配置：动态生成唯一项目名
   // "dockerComposeProjectName": "dev-${localEnv:USER}-${localWorkspaceFolderBasename}",
 

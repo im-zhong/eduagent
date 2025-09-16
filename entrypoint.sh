@@ -7,6 +7,7 @@ print_help() {
     echo "Commands:"
     echo "  api         Start FastAPI server"
     echo "  ui          Start streamlit worker"
+    echo "  dev        Start both FastAPI and Streamlit in development mode"
     echo "  help       Show this help message"
     echo
 }
@@ -14,7 +15,21 @@ print_help() {
 # install packages
 install_deps() {
     echo "Installing dependencies with dev packages..."
-    poetry install --with dev
+    uv sync --dev
+}
+
+# 在这里安装合适
+install_precommit() {
+    if command -v uv &>/dev/null; then
+        echo "🔗 使用 uv 安装 pre-commit hooks..."
+        uv run pre-commit install
+    elif command -v pre-commit &>/dev/null; then
+        echo "🔗 使用系统 pre-commit 安装 hooks..."
+        pre-commit install
+    else
+        echo "❌ pre-commit 未安装，请先运行: uv pip install pre-commit"
+        exit 1
+    fi
 }
 
 # 参数检查
@@ -31,6 +46,7 @@ case "$1" in
         echo "Starting FastAPI..."
         # TODO(zhangzhong): 在这个位置做 pre commit install 比较合适
         install_deps
+
         # exec poetry run python -m twitter_service.server.api.api
         exec uv run uvicorn eduagent.api:api \
             --host "0.0.0.0" \
@@ -45,7 +61,15 @@ case "$1" in
         install_deps
 
         exec uv run streamlit run eduagent/ui/ui.py
+        ;;
+    dev)
+        echo "Starting both FastAPI and Streamlit in development mode..."
 
+        install_deps
+        install_precommit
+
+        # "/bin/bash", "-c", "tail -f /dev/null"
+        sleep infinity
 
         ;;
     help|--help|-h)

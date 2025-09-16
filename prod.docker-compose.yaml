@@ -23,7 +23,11 @@ services:
       dockerfile: prod.Dockerfile
       args:
         # UID: $(id -u)
+        # 在一个没有配置UID的环境里，这个是无法运行的！
+        # 所以可以先尝试把这个镜像给构建出来，就是build的时候获取并设置UID，这个是可以的
+        # 但是容器化开发的时候，怎么获得这个UID呢
         UID: ${UID}
+        # Linux里面的环境变量都是有user的，这个是ok的
         USER: ${USER}
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent-prod
