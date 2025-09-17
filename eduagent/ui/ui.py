@@ -7,7 +7,7 @@ import streamlit as st
 st.title("Hello FastAPI via Streamlit")
 
 # API URL (adjust host/port if running in Docker)
-api_url = "http://eduagent-api:8000/hello"
+api_url = "http://api.eduagent:8000/hello"
 
 if st.button("Say Hello"):
     try:
