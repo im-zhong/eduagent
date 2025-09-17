@@ -10,8 +10,9 @@ ARG USER
 
 # 安装 sudo 和必要的工具
 # 只有安装了sudo 才有 /etc/sudoers的配置文件
+# Use ncat to forward git ssh traffic on keg server
 RUN apt update && \
-    apt install -y sudo curl && \
+    apt install -y sudo curl ncat && \
     apt autoremove -y && \
     apt clean
 

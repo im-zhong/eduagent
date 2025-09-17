@@ -1,50 +1,19 @@
 // https://containers.dev/implementors/json_reference/
-
 {
-  // TODO： 解决port forward的问题！把fastapi和redis服务的端口给暴露出来！
   "name": "EduAgent",
-  "dockerComposeFile": [
-    "../dev.docker-compose.yaml" // Development overrides
-  ],
+  "dockerComposeFile": ["../dev.docker-compose.yaml"],
   "service": "eduagent-dev",
   "workspaceFolder": "/home/${localEnv:USER}/eduagent",
-  "shutdownAction": "stopCompose", // 关闭 VS Code 时停止整个 Compose 环境
+  // 关闭 VS Code 时停止整个 Compose 环境
+  "shutdownAction": "stopCompose",
 
-  // ✅ runs on host before container creation
+  // runs on host before container creation
   "initializeCommand": "./check_env.sh",
 
-  // // 关键配置：动态生成唯一项目名
-  // "dockerComposeProjectName": "dev-${localEnv:USER}-${localWorkspaceFolderBasename}",
-
-  // // 注入环境变量
-  // // use different basename for different user, to not confilct with other users
-  // // "initializeCommand": "export COMPOSE_PROJECT_NAME=dev-${localEnv:USER}-${localWorkspaceFolderBasename}",
-
-  //   // 注入环境变量
-  // "remoteEnv": {
-  //   "COMPOSE_PROJECT_NAME": "dev-${localEnv:USER}-${localWorkspaceFolderBasename}"
-  // },
-
   // https://code.visualstudio.com/docs/devcontainers/containers#_forwarding-or-publishing-a-port
-  // 卧槽 真的无敌了，这样在本地就可以访问容器内部的服务！
-  // 看起来redis还是不行，需要调试一下，先去吃饭吧
-  // 但是这个其实不太适合放到这里面，因为不同的人想要forward的port应该是不一样的
-  // 而且本地的端口也可能被占用，所以还是需要手动配置一下
-  // 所以不如手动进行设置
-  // 好像vscode会自动选择host这边的端口，所以不用担心端口冲突的问题，那就这样设置好了
-  // 卧槽！成了！！！nice！
   // https://containers.dev/implementors/json_reference/#general-properties
   // Property: forwardPorts: forwarding a service not in the primary container in Docker Compose scenarios
-  // 因为我们连在了api这个容器上，所以他不需要像redis那样还得写上host
-  // 把我们的基础服务 pgsql和rabbit的端口也全部都映射出来吧
-  "forwardPorts": [
-    // TODO(zhangzhong)这里有两个选择，一个是用具体的框架的名字，但是这样在切换框架的时候，就需要改名字
-    // 一个就是用概念名字；比如 api, ui, db 这样的名字，显然后者更好
-    "eduagent-api:8000",
-    "eduagent-ui:8501",
-    "eduagent-db:5432"
-  ],
-  // 反正设置起来也非常简单
+  "forwardPorts": ["eduagent-api:8000", "eduagent-ui:8501", "eduagent-db:5432"],
 
   "customizations": {
     "vscode": {
@@ -65,8 +34,4 @@
       ]
     }
   }
-
-  // "forwardPorts": [3000, 5432], // 映射前端端口和数据库端口
-  // "postCreateCommand": "npm install && flask db upgrade", // 初始化命令
-  // "remoteUser": "vscode" // 非 root 用户
 }

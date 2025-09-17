@@ -17,7 +17,7 @@ services:
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent:${USER}
     command: ["dev"]
-    hostname: eduagent-dev
+    hostname: dev.eduagent
     restart: unless-stopped
     volumes:
       - .:/home/${USER}/eduagent
@@ -25,6 +25,8 @@ services:
       - ~/.gitconfig:/home/${USER}/.gitconfig:ro
       - ~/.git-credentials:/home/${USER}/.git-credentials:ro
       - ~/.ssh:/home/${USER}/.ssh:ro
+      # use local cache, so that we do not install pre commit every time after we rebuild continaer
+      - ~/.cache:/home/${USER}/.cache
     networks:
       eduagent-network:
     depends_on:
@@ -33,7 +35,7 @@ services:
   eduagent-api:
     image: eduagent:${USER}
     command: ["api"]
-    hostname: eduagent-api
+    hostname: api.eduagent
     expose:
       - 8000
     restart: unless-stopped
@@ -47,7 +49,7 @@ services:
   eduagent-ui:
     image: eduagent:${USER}
     command: ["ui"]
-    hostname: eduagent-ui
+    hostname: ui.eduagent
     expose:
       - 8501
     restart: unless-stopped
@@ -62,7 +64,7 @@ services:
   eduagent-db:
     image: postgres:17
     restart: unless-stopped
-    hostname: eduagent-db
+    hostname: db.eduagent
     expose:
       - 5432
     environment:
