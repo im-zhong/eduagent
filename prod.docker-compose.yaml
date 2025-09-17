@@ -17,7 +17,7 @@ services:
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent-prod
     command: ["api"]
-    hostname: eduagent-api
+    hostname: api.eduagent
     expose:
       - 8000
     ports:
@@ -33,7 +33,7 @@ services:
   eduagent-ui:
     image: eduagent-prod
     command: ["ui"]
-    hostname: eduagent-ui
+    hostname: ui.eduagent
     ports:
       - "${EDUAGENT_UI_PORT:-8501}:8501"
     restart: unless-stopped
@@ -48,7 +48,7 @@ services:
   eduagent-db:
     image: postgres:17
     restart: unless-stopped
-    hostname: eduagent-db
+    hostname: db.eduagent
     expose:
       - 5432
     environment:
