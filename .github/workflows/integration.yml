@@ -1,0 +1,37 @@
+name: Container Deployment and Integration Tests
+
+on:
+  push:
+    branches: ["main", "devops"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg UID=$(id -u) \
+            --build-arg USER=$USER \
+            -f prod.Dockerfile \
+            -t eduagent-prod .
+
+      - name: Deploy FastAPI
+        run: docker compose -f prod.docker-compose.yaml up -d
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for FastAPI to start..."
+          sleep 10  # 或者用 curl 循环检测 http://localhost:8000/hello
+
+      - name: Run integration tests
+        run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest tests/integration -v
+
+      - name: Tear down
+        run: docker compose -f prod.docker-compose.yaml down
