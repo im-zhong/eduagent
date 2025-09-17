@@ -1,6 +1,3 @@
-# 2025/9/16
-# zhangzhong
-
 from pathlib import Path
 
 from eduagent.defs import defs

@@ -1,6 +1,3 @@
-# 2025/9/16
-# zhangzhong
-
 from eduagent.logger import logger
 
 

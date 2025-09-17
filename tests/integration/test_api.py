@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 import httpx
 
-BASE_URL = "http://eduagent-api:8000"  # your FastAPI service URL
+BASE_URL = "http://eduagent-api:8000"
 
 
 def test_hello_endpoint() -> None:

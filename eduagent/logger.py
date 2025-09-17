@@ -1,5 +1,4 @@
-# 2025/8/17
-# zhangzhong
+# logger
 # https://loguru.readthedocs.io/en/stable/overview.html
 
 from logging import Logger

@@ -1,7 +1,6 @@
-# 2025/8/17
-# zhangzhong
+# settings
 # conf file is way better than env variables, so we use toml
-# settings.py
+
 
 import tomllib
 from enum import StrEnum
