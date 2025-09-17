@@ -1,9 +1,7 @@
-# Date: 2025/7/27
-# Authoer: zhangzhong
-# Tips:
-#   - Pre-commit(https://pre-commit.com/) is a framework for managing and maintaining multi-language pre-commit hooks.
-#   - All the rev of repos and version of tools are the latest when this file is created
-#   - Make sure the configuration of all these tools are consistent with the [pyproject.toml] file
+# pre-commit configuration file
+#   - pre-commit(https://pre-commit.com/) is a framework for managing and maintaining multi-language pre-commit hooks.
+#   - all the rev of repos and version of tools are the latest when this file is created
+#   - make sure the configuration of all these tools are consistent with the [pyproject.toml] file
 
 repos:
   # Some out-of-the-box hooks for pre-commit
@@ -64,7 +62,6 @@ repos:
       # Run the linter.
       - id: ruff
         args: [--fix]
-        # exclude: retriever.py
       # Run the formatter.
       - id: ruff-format
 
@@ -74,5 +71,5 @@ repos:
       - id: pyright
         additional_dependencies: []
         args: ["--warnings", "--project=pyproject.toml"]
-        language: system # 要自己保证 .venv 里装好了 pyright，否则 hook 会失败。
-        # exclude: retriever.py
+        # Use the pyright installed in the local environment
+        language: system

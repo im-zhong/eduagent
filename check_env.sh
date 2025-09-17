@@ -1,12 +1,6 @@
 #!/bin/bash
 
-# 	•	set -e：遇到错误就停。
-# 	•	set -u：禁止用未定义变量。
-# 	•	set -o pipefail：管道出错不会被忽略。
-
-# 所以 set -euo pipefail 一起用，就是：
-
-# 👉 脚本在遇到错误时立即退出，禁止使用未定义变量，管道中任何错误都会触发退出。
+# 脚本在遇到错误时立即退出，禁止使用未定义变量，管道中任何错误都会触发退出。
 set -euo pipefail
 
 echo "🔧 初始化开发环境..."
@@ -24,9 +18,9 @@ if [ -z "${UID:-}" ]; then
     export UID=$(id -u)
 fi
 EOF
-    echo "✅ 已将 UID/GID 设置逻辑写入 $BASHRC"
+    echo "✅ 已将 UID 设置逻辑写入 $BASHRC"
 else
-    echo "✅ UID/GID 设置逻辑已存在于 $BASHRC"
+    echo "✅ UID 设置逻辑已存在于 $BASHRC"
 fi
 
 ##############################################
@@ -73,19 +67,6 @@ fi
 ##############################################
 # 5. 检查 SSH 连接 GitHub
 ##############################################
-# result=`ssh -T git@github.com 2>&1 | grep -n success`
-# echo $result
-
-# ssh -T git@github.com 2>&1
-
-# if [ ! -z "$(ssh -T git@github.com 2>&1 | grep -n success)" ]; then
-#     echo "❌ SSH 无法连接 GitHub，请确认已将公钥添加到 GitHub"
-#     echo "   👉 GitHub 设置路径: https://github.com/settings/keys"
-#     exit 1
-# else
-#     echo "✅ SSH 可以连接 GitHub"
-# fi
-
 if git ls-remote git@github.com:im-zhong/eduagent.git &>/dev/null; then
     echo "✅ GitHub SSH 配置正确"
 else
@@ -127,4 +108,4 @@ fi
 ##############################################
 # 全部检查通过
 ##############################################
-echo "🎉 开发环境初始化完成！一切正常 ✅"
+echo "🎉 开发环境初始化完成！一切正常!"

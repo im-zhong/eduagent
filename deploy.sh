@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -euo pipefail
 
 # 初始化生产模式标志
@@ -7,11 +8,10 @@ production_mode=false
 # 参数检查
 if [ $# -eq 0 ]; then
     echo "ERROR: No arguments provided"
-    echo "Usage: $0 [--dev | --prod] [--port PORT]"
+    echo "Usage: $0 [--dev | --prod] [--api-port PORT] [--ui-port PORT]"
     exit 1
 fi
 
-# 解析命令行参数
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -23,12 +23,20 @@ while [[ $# -gt 0 ]]; do
             production_mode=true
             shift
             ;;
-        --port)
+        --api-port)
             if [[ -z "$2" ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || (( "$2" < 1 || "$2" > 65535 )); then
                 echo "ERROR: --port requires valid port number (1-65535)"
                 exit 1
             fi
-            twitter_service_port="$2"
+            api_port="$2"
+            shift 2
+            ;;
+        --ui-port)
+            if [[ -z "$2" ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || (( "$2" < 1 || "$2" > 65535 )); then
+                echo "ERROR: --port requires valid port number (1-65535)"
+                exit 1
+            fi
+            ui_port="$2"
             shift 2
             ;;
         --help)
@@ -36,12 +44,13 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --dev     Run in development mode"
             echo "  --prod    Run in production mode"
-            echo "  --port    Set proxy service port (1-65535)"
+            echo "  --api-port    Set API service port (1-65535)"
+            echo "  --ui-port     Set UI service port (1-65535)"
             exit 0
             ;;
         *)
             echo "ERROR: Unrecognized argument: $1"
-            echo "Usage: $0 [--dev | --prod] [--port PORT]"
+            echo "Usage: $0 [--dev | --prod] [--api-port PORT] [--ui-port PORT]"
             exit 1
             ;;
     esac
@@ -64,6 +73,7 @@ if [ ${#missing_vars[@]} -gt 0 ]; then
     exit 1
 fi
 
+# TODO(zhangzhong): add settings file later on
 # Check for settings.toml
 # if [ ! -f "etc/settings.toml" ]; then
 #     echo "ERROR: Missing required configuration file: etc/settings.toml"
@@ -81,9 +91,14 @@ if [ "$production_mode" = true ]; then
     compose_files=(-f prod.docker-compose.yaml)
     echo "Starting in PRODUCTION mode with compose files: ${compose_files[*]}"
 
-    if [ -n "${twitter_service_port:-}" ]; then
-        echo "Setting proxy service port to $twitter_service_port"
-        export TWITTER_SERVICE_PORT="$twitter_service_port"
+    if [ -n "${api_port:-}" ]; then
+        echo "Setting API service port to $api_port"
+        export EDUAGENT_API_PORT="$api_port"
+    fi
+
+    if [ -n "${ui_port:-}" ]; then
+        echo "Setting UI service port to $ui_port"
+        export EDUAGENT_UI_PORT="$ui_port"
     fi
 else
     compose_files=(-f dev.docker-compose.yaml)
@@ -92,3 +107,6 @@ fi
 
 docker compose "${compose_files[@]}" down
 docker compose "${compose_files[@]}" up -d
+
+unset EDUAGENT_API_PORT
+unset EDUAGENT_UI_PORT
