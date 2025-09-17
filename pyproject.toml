@@ -1,0 +1,76 @@
+[project]
+name = "eduagent"
+version = "0.1.0"
+description = "Education Agent: An Intelligent Question Generation System"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.116.1",
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "pydantic>=2.11.9",
+    "requests>=2.32.5",
+    "streamlit>=1.49.1",
+    "uvicorn>=0.35.0",
+]
+
+[dependency-groups]
+dev = [
+    "faker>=37.8.0",
+    "pre-commit>=4.3.0",
+    "pyright[nodejs]>=1.1.405",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.13.0",
+]
+
+[tool.pytest.ini_options]
+norecursedirs = ["data", ".git", ".venv", "dist", "build", "node_modules"]
+asyncio_mode = "auto"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D",
+    "ERA",
+    "PGH",
+    "RUF003",
+    "E501",
+    "COM",
+    "FA102",
+    "T20",
+    "TD",
+    "FIX",
+    "BLE",
+    "S",
+    "G",
+    "TC",
+    "RUF001", # https://docs.astral.sh/ruff/rules/ambiguous-unicode-character-string/
+]
+
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+
+# 虚拟环境配置
+venvPath = "."
+venv = ".venv"
+
+# 项目路径
+include = ["eduagent", "tests"]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    "data",
+]
+
+# 严格模式已经打开了大多数规则，这里只覆盖团队需要调整的
+[tool.pyright.report]
+# unusedImport = "none"      # 交给 Ruff 处理
+# unusedVariable = "none"    # 交给 Ruff 处理
+missingTypeStubs = "warning" # 默认是 error，改成 warning，避免第三方库太多报错

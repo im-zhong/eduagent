@@ -1,0 +1,64 @@
+# docker compose file for development environment
+# refs:
+#   - https://docs.docker.com/reference/compose-file/services/
+#   - https://docs.docker.com/reference/compose-file/services/#build
+#   - https://docs.docker.com/reference/compose-file/build/
+
+name: eduagent-prod-${USER}
+
+services:
+  eduagent-api:
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
+      args:
+        UID: ${UID}
+        USER: ${USER}
+    # The image field allows you to specify the name and tag of the image that will be built.
+    image: eduagent-prod
+    command: ["api"]
+    hostname: eduagent-api
+    expose:
+      - 8000
+    ports:
+      - "${EDUAGENT_API_PORT:-8000}:8000"
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      eduagent-prod-network:
+    depends_on:
+      - eduagent-db
+
+  eduagent-ui:
+    image: eduagent-prod
+    command: ["ui"]
+    hostname: eduagent-ui
+    ports:
+      - "${EDUAGENT_UI_PORT:-8501}:8501"
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      eduagent-prod-network:
+    depends_on:
+      - eduagent-api
+      - eduagent-db
+
+  eduagent-db:
+    image: postgres:17
+    restart: unless-stopped
+    hostname: eduagent-db
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-ysu_keg}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-123456789}
+      - POSTGRES_DB=${POSTGRES_DB:-eduagent}
+    networks:
+      - eduagent-prod-network
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+networks:
+  eduagent-prod-network:

@@ -1,0 +1,78 @@
+# docker compose file for development environment
+# refs:
+#   - https://docs.docker.com/reference/compose-file/services/
+#   - https://docs.docker.com/reference/compose-file/services/#build
+#   - https://docs.docker.com/reference/compose-file/build/
+
+name: eduagent-${USER}
+
+services:
+  eduagent-dev:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+      args:
+        UID: ${UID}
+        USER: ${USER}
+    # The image field allows you to specify the name and tag of the image that will be built.
+    image: eduagent:${USER}
+    command: ["dev"]
+    hostname: eduagent-dev
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+      # use local host's git config, ssh keys, credentials to access github repos
+      - ~/.gitconfig:/home/${USER}/.gitconfig:ro
+      - ~/.git-credentials:/home/${USER}/.git-credentials:ro
+      - ~/.ssh:/home/${USER}/.ssh:ro
+    networks:
+      eduagent-network:
+    depends_on:
+      - eduagent-db
+
+  eduagent-api:
+    image: eduagent:${USER}
+    command: ["api"]
+    hostname: eduagent-api
+    expose:
+      - 8000
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      eduagent-network:
+    depends_on:
+      - eduagent-dev
+
+  eduagent-ui:
+    image: eduagent:${USER}
+    command: ["ui"]
+    hostname: eduagent-ui
+    expose:
+      - 8501
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      eduagent-network:
+    depends_on:
+      - eduagent-dev
+      - eduagent-db
+
+  eduagent-db:
+    image: postgres:17
+    restart: unless-stopped
+    hostname: eduagent-db
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-ysu_keg}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-123456789}
+      - POSTGRES_DB=${POSTGRES_DB:-eduagent}
+    networks:
+      - eduagent-network
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+networks:
+  eduagent-network:
