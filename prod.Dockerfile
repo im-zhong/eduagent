@@ -10,7 +10,7 @@ ARG USER
 # 安装 sudo 和必要的工具
 # 只有安装了sudo 才有 /etc/sudoers的配置文件
 RUN apt update && \
-    apt install -y curl && \
+    apt install -y curl ncat && \
     apt autoremove -y && \
     apt clean
 
