@@ -28,7 +28,7 @@ jobs:
       - name: Wait for services to be ready
         run: |
           echo "Waiting for FastAPI to start..."
-          sleep 10  # 或者用 curl 循环检测 http://localhost:8000/hello
+          sleep 10  # Or use curl in a loop to check http://localhost:8000/hello
 
       - name: Run integration tests
         run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest tests/integration -v
