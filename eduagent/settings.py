@@ -3,41 +3,36 @@
 
 
 import tomllib
-from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from eduagent.defs import defs
 
 # ------------------------
 # 枚举
 # ------------------------
-class LLMType(StrEnum):
-    QWEN = "qwen"
-    DEEPSEEK = "deepseek"
 
 
 # ------------------------
 # 配置块
 # ------------------------
 class ProjectConfig(BaseModel):
-    name: str = "Education Agent"
-    version: str = "1.0.0"
-    api_v1_str: str = "v1"
+    api_version: str = "v1"
 
 
-class DeepSeekConfig(BaseModel):
+class LLMConfig(BaseModel):
     api_key: str = "NOKEY"
     api_base: str = "https://api.deepseek.com"
 
 
 class DatabaseConfig(BaseModel):
-    user: str = "root"
-    password: str = "123456"
-    host: str = "localhost"
+    user: str = "ysu_keg"
+    password: str = "123456789"
+    host: str = "db.eduagent"
     port: int = 5432
-    name: str = "education"
+    name: str = "eduagent"
 
     @property
     def sqlalchemy_url(self) -> str:
@@ -53,26 +48,16 @@ class DatabaseConfig(BaseModel):
             "database": self.name,
         }
 
-
-class LLMConfig(BaseModel):
-    base_llm: LLMType = LLMType.QWEN
+    # ------------------------
 
 
-# ------------------------
 # 总 Settings
 # ------------------------
 class Settings(BaseModel):
     project: ProjectConfig = Field(default_factory=ProjectConfig)
-    deepseek: DeepSeekConfig = Field(default_factory=DeepSeekConfig)
-
-    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
 
-    # ------------------------
-    # LLM 配置方法
-    # ------------------------
-    def get_base_llm(self) -> LLMType:
-        return self.llm.base_llm
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
 
 # ------------------------
@@ -90,5 +75,4 @@ def new_settings(path: str | Path) -> Settings:
     return Settings(**data)
 
 
-# TODO(zhangzhong): 做CICD的时候怎么生成一个配置文件？
-# settings: Settings = new_settings(path=defs.pathes.default_settings_file)
+settings: Settings = new_settings(path=defs.pathes.default_settings_file)
