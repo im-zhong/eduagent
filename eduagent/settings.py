@@ -66,4 +66,11 @@ def new_settings(path: str | Path) -> Settings:
     return Settings(**data)
 
 
-settings: Settings = new_settings(path=defs.pathes.default_settings_file)
+def create_default_settings() -> Settings:
+    if not defs.pathes.default_settings_file.exists():
+        return Settings()
+    return new_settings(defs.pathes.default_settings_file)
+
+
+# 应该在有配置文件的时候读取配置文件，没有的话就用默认值
+settings: Settings = create_default_settings()
