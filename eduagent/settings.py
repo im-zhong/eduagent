@@ -10,14 +10,7 @@ from pydantic import BaseModel, Field
 
 from eduagent.defs import defs
 
-# ------------------------
-# 枚举
-# ------------------------
 
-
-# ------------------------
-# 配置块
-# ------------------------
 class ProjectConfig(BaseModel):
     api_version: str = "v1"
 
@@ -47,8 +40,6 @@ class DatabaseConfig(BaseModel):
             "port": self.port,
             "database": self.name,
         }
-
-    # ------------------------
 
 
 # 总 Settings
