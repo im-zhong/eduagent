@@ -20,7 +20,7 @@ class Pathes:
 
     @property
     def default_settings_file(self) -> Path:
-        return self.etc_dir / Path("eduagent.toml")
+        return Path("eduagent.toml")
 
     @property
     def example_settings_file(self) -> Path:

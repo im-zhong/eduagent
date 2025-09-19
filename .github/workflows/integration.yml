@@ -2,7 +2,7 @@ name: Container Deployment and Integration Tests
 
 on:
   push:
-    branches: ["main", "devops"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 

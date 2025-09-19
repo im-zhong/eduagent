@@ -3,41 +3,29 @@
 
 
 import tomllib
-from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-
-# ------------------------
-# 枚举
-# ------------------------
-class LLMType(StrEnum):
-    QWEN = "qwen"
-    DEEPSEEK = "deepseek"
+from eduagent.defs import defs
 
 
-# ------------------------
-# 配置块
-# ------------------------
 class ProjectConfig(BaseModel):
-    name: str = "Education Agent"
-    version: str = "1.0.0"
-    api_v1_str: str = "v1"
+    api_version: str = "v1"
 
 
-class DeepSeekConfig(BaseModel):
+class LLMConfig(BaseModel):
     api_key: str = "NOKEY"
     api_base: str = "https://api.deepseek.com"
 
 
 class DatabaseConfig(BaseModel):
-    user: str = "root"
-    password: str = "123456"
-    host: str = "localhost"
+    user: str = "ysu_keg"
+    password: str = "123456789"
+    host: str = "db.eduagent"
     port: int = 5432
-    name: str = "education"
+    name: str = "eduagent"
 
     @property
     def sqlalchemy_url(self) -> str:
@@ -54,25 +42,13 @@ class DatabaseConfig(BaseModel):
         }
 
 
-class LLMConfig(BaseModel):
-    base_llm: LLMType = LLMType.QWEN
-
-
-# ------------------------
 # 总 Settings
 # ------------------------
 class Settings(BaseModel):
     project: ProjectConfig = Field(default_factory=ProjectConfig)
-    deepseek: DeepSeekConfig = Field(default_factory=DeepSeekConfig)
-
-    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
 
-    # ------------------------
-    # LLM 配置方法
-    # ------------------------
-    def get_base_llm(self) -> LLMType:
-        return self.llm.base_llm
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
 
 # ------------------------
@@ -90,5 +66,11 @@ def new_settings(path: str | Path) -> Settings:
     return Settings(**data)
 
 
-# TODO(zhangzhong): 做CICD的时候怎么生成一个配置文件？
-# settings: Settings = new_settings(path=defs.pathes.default_settings_file)
+def create_default_settings() -> Settings:
+    if not defs.pathes.default_settings_file.exists():
+        return Settings()
+    return new_settings(defs.pathes.default_settings_file)
+
+
+# 应该在有配置文件的时候读取配置文件，没有的话就用默认值
+settings: Settings = create_default_settings()

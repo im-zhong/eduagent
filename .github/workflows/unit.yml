@@ -2,7 +2,7 @@ name: Code Quality and Unit Tests
 
 on:
   push:
-    branches: ["main", "devops"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
