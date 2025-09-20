@@ -8,3 +8,4 @@ Assist educators and learners by automatically generating educational questions 
 
 YunX xyiu.run@gmail.com
 Eon-Flight eon3209036707@gmail.com
+G_shang_hui 271278430@qq.com
