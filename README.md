@@ -6,7 +6,9 @@ Education Agent: An Intelligent Question Generation System
 
 Assist educators and learners by automatically generating educational questions from text materials or knowledge bases. It leverages natural language processing (NLP) and modern AI models to create meaningful and context-aware questions.
 
+
 YunX xyiu.run@gmail.com
 Eon-Flight eon3209036707@gmail.com
 G_shang_hui 271278430@qq.com
 Marisolebxf 835245656@qq.com
+Zhou lz4530_j@163.com
