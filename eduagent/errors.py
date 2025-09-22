@@ -4,3 +4,7 @@
 
 class EduAgentError(Exception):
     """Base class for all EduAgent errors."""
+
+
+def demo_function(a: int) -> int:
+    return a + 1
