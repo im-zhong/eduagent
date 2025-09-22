@@ -57,7 +57,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Step 1: Check required environment variables
-required_vars=("UID" "USER")
+required_vars=("USER_UID" "USER")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
