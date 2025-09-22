@@ -5,37 +5,34 @@ set -euo pipefail
 
 echo "🔧 初始化开发环境..."
 
-# 根据当前用户的 shell 类型选择 rc 文件
-SHELL_NAME=$(basename "$SHELL")
-case "$SHELL_NAME" in
-    bash)
-        RC_FILE="$HOME/.bashrc"
-        ;;
-    zsh)
-        RC_FILE="$HOME/.zshrc"
-        ;;
-    *)
-        # 不支持的shell类型报错
-        echo "❌ 不支持的 shell 类型: $SHELL_NAME. 仅支持 bash 和 zsh."
-        exit 1
-        ;;
-esac
+echo "🔧 检查/写入 .env 文件..."
 
-##############################################
-# 1. 设置 UID/GID 自动注入
-##############################################
-if ! grep -q "## EduAgent Dev container UID setup" "$RC_FILE"; then
-    cat >> "$RC_FILE" <<'EOF'
+ENV_FILE=".env"
 
-## EduAgent Dev container UID setup
-if [ -z "${UID:-}" ]; then
-    export UID=$(id -u)
+# 确保 .env 存在
+if [ ! -f "$ENV_FILE" ]; then
+    touch "$ENV_FILE"
 fi
-EOF
-    echo "✅ 已将 UID 设置逻辑写入 $RC_FILE"
-else
-    echo "✅ UID 设置逻辑已存在于 $RC_FILE"
-fi
+
+add_if_missing() {
+    local key=$1
+    local value=$2
+
+    if grep -qE "^${key}=" "$ENV_FILE"; then
+        echo "✅ $key 已存在于 $ENV_FILE，跳过"
+    else
+        echo "${key}=${value}" >> "$ENV_FILE"
+        echo "➕ 已写入 $key=$value 到 $ENV_FILE"
+    fi
+}
+
+USER_UID=$(id -u)
+
+add_if_missing "USER_UID" "$USER_UID"
+add_if_missing "USER" "$USER"
+
+echo "✅ 最终 .env 文件内容："
+cat "$ENV_FILE"
 
 ##############################################
 # 2. 检查 Git 仓库
