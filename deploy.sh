@@ -57,21 +57,32 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Step 1: Check required environment variables
-required_vars=("USER_UID" "USER")
-missing_vars=()
+ENV_FILE=".env"
 
-for var in "${required_vars[@]}"; do
-    if ! printenv "$var" > /dev/null; then
-        missing_vars+=("$var")
-    fi
-done
-
-if [ ${#missing_vars[@]} -gt 0 ]; then
-    echo "ERROR: Missing required environment variables:"
-    printf ' - %s\n' "${missing_vars[@]}"
-    echo "Please set these variables before running the script."
-    exit 1
+# 确保 .env 存在
+if [ ! -f "$ENV_FILE" ]; then
+    touch "$ENV_FILE"
 fi
+
+add_if_missing() {
+    local key=$1
+    local value=$2
+
+    if grep -qE "^${key}=" "$ENV_FILE"; then
+        echo "✅ $key 已存在于 $ENV_FILE 跳过"
+    else
+        echo "${key}=${value}" >> "$ENV_FILE"
+        echo "➕ 已写入 $key=$value 到 $ENV_FILE"
+    fi
+}
+
+USER_UID=$(id -u)
+
+add_if_missing "USER_UID" "$USER_UID"
+add_if_missing "USER" "$USER"
+
+echo "✅ 最终 .env 文件内容："
+cat "$ENV_FILE"
 
 # TODO(zhangzhong): add settings file later on
 # Check for settings.toml
