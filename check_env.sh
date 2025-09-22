@@ -5,22 +5,36 @@ set -euo pipefail
 
 echo "🔧 初始化开发环境..."
 
-BASHRC="$HOME/.bashrc"
+# 根据当前用户的 shell 类型选择 rc 文件
+SHELL_NAME=$(basename "$SHELL")
+case "$SHELL_NAME" in
+    bash)
+        RC_FILE="$HOME/.bashrc"
+        ;;
+    zsh)
+        RC_FILE="$HOME/.zshrc"
+        ;;
+    *)
+        # 不支持的shell类型报错
+        echo "❌ 不支持的 shell 类型: $SHELL_NAME. 仅支持 bash 和 zsh."
+        exit 1
+        ;;
+esac
 
 ##############################################
 # 1. 设置 UID/GID 自动注入
 ##############################################
-if ! grep -q "## EduAgent Dev container UID setup" "$BASHRC"; then
-    cat >> "$BASHRC" <<'EOF'
+if ! grep -q "## EduAgent Dev container UID setup" "$RC_FILE"; then
+    cat >> "$RC_FILE" <<'EOF'
 
 ## EduAgent Dev container UID setup
 if [ -z "${UID:-}" ]; then
     export UID=$(id -u)
 fi
 EOF
-    echo "✅ 已将 UID 设置逻辑写入 $BASHRC"
+    echo "✅ 已将 UID 设置逻辑写入 $RC_FILE"
 else
-    echo "✅ UID 设置逻辑已存在于 $BASHRC"
+    echo "✅ UID 设置逻辑已存在于 $RC_FILE"
 fi
 
 ##############################################
