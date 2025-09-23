@@ -1,8 +1,13 @@
 import uuid
 from abc import abstractmethod
-from typing import Any
 
 from .base import BaseTool
+from .types import (
+    SubmissionData,
+    TextbookMetadata,
+    ToolParameters,
+    ToolResult,
+)
 
 
 class AnalyticsTool(BaseTool):
@@ -11,21 +16,20 @@ class AnalyticsTool(BaseTool):
     Provides insights into student performance and learning patterns
     """
 
-    def __init__(self):
+    # Constants for query parsing
+    MIN_STUDENT_ID_PARTS = 2
+    MIN_SUBJECT_PARTS = 3
+
+    def __init__(self) -> None:
         super().__init__(
             tool_name="analytics_tool",
-            description="Generate educational analytics and performance insights"
+            description="Generate educational analytics and performance insights",
         )
-        # Define tool parameters
-        self.add_parameter("student_id", "ID of student for analytics")
-        self.add_parameter("class_id", "ID of class for analytics")
-        self.add_parameter("time_period", "Time period for analysis", default="30d")
-        self.add_parameter("analytics_type", "Type of analytics to generate", required=True)
 
     @abstractmethod
-    def get_student_analytics(self,
-                            student_id: uuid.UUID,
-                            time_period: str = "30d") -> dict[str, Any]:
+    def get_student_analytics(
+        self, student_id: uuid.UUID, time_period: str = "30d"
+    ) -> ToolResult:
         """
         Get comprehensive analytics for a student
 
@@ -38,9 +42,9 @@ class AnalyticsTool(BaseTool):
         """
 
     @abstractmethod
-    def get_class_analytics(self,
-                          class_id: uuid.UUID,
-                          time_period: str = "30d") -> dict[str, Any]:
+    def get_class_analytics(
+        self, class_id: uuid.UUID, time_period: str = "30d"
+    ) -> ToolResult:
         """
         Get analytics for an entire class
 
@@ -53,9 +57,9 @@ class AnalyticsTool(BaseTool):
         """
 
     @abstractmethod
-    def identify_learning_gaps(self,
-                             student_id: uuid.UUID,
-                             subject_area: str) -> dict[str, Any]:
+    def identify_learning_gaps(
+        self, student_id: uuid.UUID, subject_area: str
+    ) -> ToolResult:
         """
         Identify learning gaps for a student
 
@@ -68,9 +72,9 @@ class AnalyticsTool(BaseTool):
         """
 
     @abstractmethod
-    def generate_progress_report(self,
-                               student_id: uuid.UUID,
-                               report_type: str = "comprehensive") -> dict[str, Any]:
+    def generate_progress_report(
+        self, student_id: uuid.UUID, report_type: str = "comprehensive"
+    ) -> ToolResult:
         """
         Generate progress report for a student
 
@@ -83,9 +87,9 @@ class AnalyticsTool(BaseTool):
         """
 
     @abstractmethod
-    def predict_performance(self,
-                          student_id: uuid.UUID,
-                          future_timeframe: str = "30d") -> dict[str, Any]:
+    def predict_performance(
+        self, student_id: uuid.UUID, future_timeframe: str = "30d"
+    ) -> ToolResult:
         """
         Predict future performance for a student
 
@@ -97,69 +101,79 @@ class AnalyticsTool(BaseTool):
             Dictionary with performance predictions
         """
 
-    def execute(self, **kwargs) -> dict[str, Any]:
+    def execute(
+        self,
+        operation: str,
+        file_path: str | None = None,  # noqa: ARG002
+        textbook_metadata: TextbookMetadata | None = None,  # noqa: ARG002
+        user_query: str | None = None,
+        submissions: list[SubmissionData] | None = None,  # noqa: ARG002
+    ) -> ToolResult:
         """Execute analytics tool operation"""
-        operation = kwargs.get("operation", "student_analytics")
+        if operation == "student_analytics" and user_query:
+            # Parse student_id from user_query
+            student_id = (
+                user_query.split(":")[1].strip() if ":" in user_query else user_query
+            )
+            return self.get_student_analytics(uuid.UUID(student_id))
+        if operation == "class_analytics" and user_query:
+            # Parse class_id from user_query
+            class_id = (
+                user_query.split(":")[1].strip() if ":" in user_query else user_query
+            )
+            return self.get_class_analytics(uuid.UUID(class_id))
+        if operation == "identify_gaps" and user_query:
+            # Parse student_id and subject_area from user_query
+            parts = user_query.split(":")
+            student_id = (
+                parts[1].strip()
+                if len(parts) > self.MIN_STUDENT_ID_PARTS - 1
+                else user_query
+            )
+            subject_area = (
+                parts[2].strip()
+                if len(parts) > self.MIN_SUBJECT_PARTS - 1
+                else "general"
+            )
+            return self.identify_learning_gaps(uuid.UUID(student_id), subject_area)
+        if operation == "generate_report" and user_query:
+            # Parse student_id from user_query
+            student_id = (
+                user_query.split(":")[1].strip() if ":" in user_query else user_query
+            )
+            return self.generate_progress_report(uuid.UUID(student_id))
+        return ToolResult(
+            success=False, error=f"Unknown or invalid operation: {operation}"
+        )
 
-        if operation == "student_analytics":
-            return self.get_student_analytics(
-                kwargs["student_id"],
-                kwargs.get("time_period", "30d")
-            )
-        if operation == "class_analytics":
-            return self.get_class_analytics(
-                kwargs["class_id"],
-                kwargs.get("time_period", "30d")
-            )
-        if operation == "identify_gaps":
-            return self.identify_learning_gaps(
-                kwargs["student_id"],
-                kwargs["subject_area"]
-            )
-        if operation == "generate_report":
-            return self.generate_progress_report(
-                kwargs["student_id"],
-                kwargs.get("report_type", "comprehensive")
-            )
-        if operation == "predict_performance":
-            return self.predict_performance(
-                kwargs["student_id"],
-                kwargs.get("future_timeframe", "30d")
-            )
-        return {"error": f"Unknown operation: {operation}"}
+        return ToolResult(
+            success=False, error=f"Operation not implemented: {operation}"
+        )
 
-    def validate_parameters(self, parameters: dict[str, Any]) -> bool:
+    def validate_parameters(self, parameters: ToolParameters) -> bool:
         """Validate analytics tool parameters"""
-        operation = parameters.get("operation", "student_analytics")
+        operation = parameters.operation
 
         if operation == "student_analytics":
-            return "student_id" in parameters
+            return parameters.knowledge_point_ids is not None
         if operation == "class_analytics":
-            return "class_id" in parameters
+            return parameters.knowledge_point_ids is not None
         if operation == "identify_gaps":
-            return "student_id" in parameters and "subject_area" in parameters
-        if operation == "generate_report" or operation == "predict_performance":
-            return "student_id" in parameters
+            return parameters.knowledge_point_ids is not None
+        if operation in ("generate_report", "predict_performance"):
+            return parameters.knowledge_point_ids is not None
         return False
 
-    def get_tool_schema(self) -> dict[str, Any]:
+    def get_tool_schema(self) -> ToolResult:
         """Return analytics tool schema"""
-        return {
-            "name": self.tool_name,
-            "description": self.description,
-            "version": self.version,
-            "operations": ["student_analytics", "class_analytics", "identify_gaps", "generate_report", "predict_performance"],
-            "parameters": self.parameters
-        }
+        return ToolResult(
+            result_type="tool_schema",
+            message=f"Analytics tool schema for {self.tool_name}",
+        )
 
-    def get_tool_capabilities(self) -> dict[str, Any]:
+    def get_tool_capabilities(self) -> ToolResult:
         """Return analytics tool capabilities"""
-        return {
-            "student_analytics": True,
-            "class_analytics": True,
-            "learning_gap_analysis": True,
-            "progress_tracking": True,
-            "performance_prediction": True,
-            "report_generation": True,
-            "real_time_analytics": True
-        }
+        return ToolResult(
+            result_type="tool_capabilities",
+            message="Analytics tool capabilities: student_analytics, class_analytics, learning_gap_analysis, progress_tracking, performance_prediction, report_generation, real_time_analytics",
+        )

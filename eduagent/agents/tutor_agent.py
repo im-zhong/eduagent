@@ -15,14 +15,13 @@ class TutorAgent(BaseAgent):
         super().__init__(
             agent_id=agent_id,
             name="Tutor Agent",
-            description="Provides personalized tutoring, explanations, and learning support"
+            description="Provides personalized tutoring, explanations, and learning support",
         )
 
     @abstractmethod
-    def provide_explanation(self,
-                          concept: str,
-                          student_level: str,
-                          context: dict[str, Any]) -> dict[str, Any]:
+    def provide_explanation(
+        self, concept: str, student_level: str, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Provide personalized explanation of a concept
 
@@ -36,9 +35,9 @@ class TutorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def answer_student_question(self,
-                              question: str,
-                              student_id: uuid.UUID) -> dict[str, Any]:
+    def answer_student_question(
+        self, question: str, student_id: uuid.UUID
+    ) -> dict[str, Any]:
         """
         Answer student questions with appropriate level of detail
 
@@ -51,9 +50,9 @@ class TutorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def create_personalized_learning_path(self,
-                                        student_id: uuid.UUID,
-                                        learning_goals: list[str]) -> dict[str, Any]:
+    def create_personalized_learning_path(
+        self, student_id: uuid.UUID, learning_goals: list[str]
+    ) -> dict[str, Any]:
         """
         Create personalized learning path for a student
 
@@ -66,9 +65,9 @@ class TutorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def adapt_content_difficulty(self,
-                               content: dict[str, Any],
-                               student_performance: dict[str, Any]) -> dict[str, Any]:
+    def adapt_content_difficulty(
+        self, content: dict[str, Any], student_performance: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Adapt content difficulty based on student performance
 
@@ -81,9 +80,9 @@ class TutorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def provide_encouragement(self,
-                            student_id: uuid.UUID,
-                            performance_data: dict[str, Any]) -> dict[str, Any]:
+    def provide_encouragement(
+        self, student_id: uuid.UUID, performance_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Provide motivational feedback and encouragement
 
@@ -96,9 +95,9 @@ class TutorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def suggest_learning_activities(self,
-                                  student_id: uuid.UUID,
-                                  knowledge_gaps: list[str]) -> list[dict[str, Any]]:
+    def suggest_learning_activities(
+        self, student_id: uuid.UUID, knowledge_gaps: list[str]
+    ) -> list[dict[str, Any]]:
         """
         Suggest learning activities to address knowledge gaps
 
@@ -111,9 +110,9 @@ class TutorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def monitor_progress(self,
-                       student_id: uuid.UUID,
-                       learning_objectives: list[str]) -> dict[str, Any]:
+    def monitor_progress(
+        self, student_id: uuid.UUID, learning_objectives: list[str]
+    ) -> dict[str, Any]:
         """
         Monitor student progress towards learning objectives
 
@@ -131,7 +130,8 @@ class TutorAgent(BaseAgent):
 
     def process_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """Process tutoring request"""
-        # Main request processing logic
+        error_msg = "Concrete tutor agents must implement process_request method"
+        raise NotImplementedError(error_msg)
 
     def get_available_actions(self) -> list[str]:
         """Return available actions for this agent"""
@@ -142,12 +142,13 @@ class TutorAgent(BaseAgent):
             "adapt_content_difficulty",
             "provide_encouragement",
             "suggest_learning_activities",
-            "monitor_progress"
+            "monitor_progress",
         ]
 
     def validate_request(self, request: dict[str, Any]) -> bool:
         """Validate if request is suitable for tutoring"""
-        # Validation logic
+        error_msg = "Concrete tutor agents must implement validate_request method"
+        raise NotImplementedError(error_msg)
 
     def get_agent_capabilities(self) -> dict[str, Any]:
         """Return agent capabilities"""
@@ -156,5 +157,5 @@ class TutorAgent(BaseAgent):
             "teaching_style": ["socratic", "direct_instruction", "guided_discovery"],
             "adaptation_level": ["content", "difficulty", "pacing", "style"],
             "interaction_modes": ["text", "multimedia", "interactive"],
-            "personalization_depth": ["basic", "moderate", "deep"]
+            "personalization_depth": ["basic", "moderate", "deep"],
         }

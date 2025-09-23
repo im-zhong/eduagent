@@ -60,13 +60,18 @@ case "$1" in
         echo "Starting Streamlit..."
         install_deps
 
-        exec uv run streamlit run eduagent/ui/ui.py
+        export PYTHONPATH=.
+        exec uv run streamlit run eduagent/ui/main.py
         ;;
     dev)
         echo "Starting both FastAPI and Streamlit in development mode..."
 
         install_deps
         install_precommit
+        # install claude code envs, I need to check the json file on the ~/.claude.json and ~/.claude
+        # and I should use the proper API KEY, maybe on different project, I want to use different key
+        # so in each container, use there own key is ok, so we try to not mapping the
+        # we try to not touch the onboard settings, and only set the api keys envs, throuth docker env
 
         # "/bin/bash", "-c", "tail -f /dev/null"
         sleep infinity

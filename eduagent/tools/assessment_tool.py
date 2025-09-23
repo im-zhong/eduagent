@@ -1,8 +1,14 @@
 import uuid
 from abc import abstractmethod
-from typing import Any
 
 from .base import BaseTool
+from .types import (
+    AssessmentCriteria,
+    SubmissionData,
+    TextbookMetadata,
+    ToolParameters,
+    ToolResult,
+)
 
 
 class AssessmentTool(BaseTool):
@@ -11,20 +17,21 @@ class AssessmentTool(BaseTool):
     Evaluates answers and provides educational feedback
     """
 
-    def __init__(self):
+    # Constants for query parsing
+    MIN_PARTS = 3
+
+    def __init__(self) -> None:
         super().__init__(
             tool_name="assessment_tool",
-            description="Evaluate student answers and generate detailed feedback"
+            description="Evaluate student answers and generate detailed feedback",
         )
-        # Define tool parameters
-        self.add_parameter("submissions", "List of student answer submissions", required=True)
-        self.add_parameter("assessment_criteria", "Criteria for assessment")
-        self.add_parameter("feedback_level", "Level of detail for feedback", default="detailed")
 
     @abstractmethod
-    def evaluate_answers(self,
-                        submissions: list[dict[str, Any]],
-                        assessment_criteria: dict[str, Any] | None = None) -> dict[str, Any]:
+    def evaluate_answers(
+        self,
+        submissions: list[SubmissionData],
+        assessment_criteria: AssessmentCriteria | None = None,
+    ) -> ToolResult:
         """
         Evaluate student answers and provide assessment
 
@@ -37,11 +44,13 @@ class AssessmentTool(BaseTool):
         """
 
     @abstractmethod
-    def generate_feedback(self,
-                         submission_id: uuid.UUID,
-                         student_answer: str,
-                         correct_answer: str,
-                         feedback_level: str = "detailed") -> dict[str, Any]:
+    def generate_feedback(
+        self,
+        submission_id: uuid.UUID,
+        student_answer: str,
+        correct_answer: str,
+        feedback_level: str = "detailed",
+    ) -> ToolResult:
         """
         Generate detailed feedback for a student answer
 
@@ -56,9 +65,9 @@ class AssessmentTool(BaseTool):
         """
 
     @abstractmethod
-    def identify_mistake_patterns(self,
-                                student_id: uuid.UUID,
-                                time_period: str | None = None) -> dict[str, Any]:
+    def identify_mistake_patterns(
+        self, student_id: uuid.UUID, time_period: str | None = None
+    ) -> ToolResult:
         """
         Identify common mistake patterns for a student
 
@@ -71,9 +80,9 @@ class AssessmentTool(BaseTool):
         """
 
     @abstractmethod
-    def calculate_performance_metrics(self,
-                                   student_id: uuid.UUID,
-                                   knowledge_point_ids: list[uuid.UUID] | None = None) -> dict[str, Any]:
+    def calculate_performance_metrics(
+        self, student_id: uuid.UUID, knowledge_point_ids: list[uuid.UUID] | None = None
+    ) -> ToolResult:
         """
         Calculate performance metrics for a student
 
@@ -85,63 +94,66 @@ class AssessmentTool(BaseTool):
             Dictionary with performance metrics
         """
 
-    def execute(self, **kwargs) -> dict[str, Any]:
+    def execute(
+        self,
+        operation: str,
+        file_path: str | None = None,  # noqa: ARG002
+        textbook_metadata: TextbookMetadata | None = None,  # noqa: ARG002
+        user_query: str | None = None,
+        submissions: list[SubmissionData] | None = None,
+    ) -> ToolResult:
         """Execute assessment tool operation"""
-        operation = kwargs.get("operation", "evaluate")
+        if operation == "evaluate" and submissions:
+            return self.evaluate_answers(submissions)
+        if operation == "generate_feedback" and user_query:
+            # Parse feedback parameters from user_query
+            parts = user_query.split(":")
+            if len(parts) >= self.MIN_PARTS:
+                submission_id = uuid.UUID(parts[1].strip())
+                student_answer = parts[2].strip()
+                correct_answer = parts[3].strip() if len(parts) > self.MIN_PARTS else ""
+                return self.generate_feedback(
+                    submission_id, student_answer, correct_answer
+                )
+        elif operation == "identify_mistakes" and user_query:
+            # Parse student_id from user_query
+            student_id = uuid.UUID(user_query.split(":")[1].strip())
+            return self.identify_mistake_patterns(student_id)
+        elif operation == "calculate_metrics" and user_query:
+            # Parse student_id from user_query
+            student_id = uuid.UUID(user_query.split(":")[1].strip())
+            return self.calculate_performance_metrics(student_id)
+        else:
+            return ToolResult(
+                success=False, error=f"Unknown or invalid operation: {operation}"
+            )
 
-        if operation == "evaluate":
-            return self.evaluate_answers(
-                kwargs["submissions"],
-                kwargs.get("assessment_criteria")
-            )
-        if operation == "generate_feedback":
-            return self.generate_feedback(
-                kwargs["submission_id"],
-                kwargs["student_answer"],
-                kwargs["correct_answer"],
-                kwargs.get("feedback_level", "detailed")
-            )
-        if operation == "identify_mistakes":
-            return self.identify_mistake_patterns(
-                kwargs["student_id"],
-                kwargs.get("time_period")
-            )
-        if operation == "calculate_metrics":
-            return self.calculate_performance_metrics(
-                kwargs["student_id"],
-                kwargs.get("knowledge_point_ids")
-            )
-        return {"error": f"Unknown operation: {operation}"}
+        return ToolResult(
+            success=False, error=f"Operation not implemented: {operation}"
+        )
 
-    def validate_parameters(self, parameters: dict[str, Any]) -> bool:
+    def validate_parameters(self, parameters: ToolParameters) -> bool:
         """Validate assessment tool parameters"""
-        operation = parameters.get("operation", "evaluate")
+        operation = parameters.operation
 
         if operation == "evaluate":
-            return "submissions" in parameters
+            return True  # Submissions are passed directly to execute method
         if operation == "generate_feedback":
-            return all(key in parameters for key in ["submission_id", "student_answer", "correct_answer"])
-        if operation == "identify_mistakes" or operation == "calculate_metrics":
-            return "student_id" in parameters
+            return parameters.question_text is not None
+        if operation in ("identify_mistakes", "calculate_metrics"):
+            return parameters.knowledge_point_ids is not None
         return False
 
-    def get_tool_schema(self) -> dict[str, Any]:
+    def get_tool_schema(self) -> ToolResult:
         """Return assessment tool schema"""
-        return {
-            "name": self.tool_name,
-            "description": self.description,
-            "version": self.version,
-            "operations": ["evaluate", "generate_feedback", "identify_mistakes", "calculate_metrics"],
-            "parameters": self.parameters
-        }
+        return ToolResult(
+            result_type="tool_schema",
+            message=f"Assessment tool schema for {self.tool_name}",
+        )
 
-    def get_tool_capabilities(self) -> dict[str, Any]:
+    def get_tool_capabilities(self) -> ToolResult:
         """Return assessment tool capabilities"""
-        return {
-            "auto_grading": True,
-            "feedback_generation": True,
-            "mistake_analysis": True,
-            "performance_tracking": True,
-            "personalized_feedback": True,
-            "real_time_assessment": True
-        }
+        return ToolResult(
+            result_type="tool_capabilities",
+            message="Assessment tool capabilities: auto_grading, feedback_generation, mistake_analysis, performance_tracking, personalized_feedback, real_time_assessment",
+        )

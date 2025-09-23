@@ -3,6 +3,7 @@
 
 
 from pathlib import Path
+from typing import ClassVar
 
 
 class Pathes:
@@ -76,49 +77,68 @@ class UIDefs:
     PAGE_ICON = "📚"
 
     # Navigation options
-    TEACHER_NAV_OPTIONS = [
+    TEACHER_NAV_OPTIONS: ClassVar[list[str]] = [
         "🏠 Dashboard",
         "📖 Textbook Management",
         "❓ Question Generation",
         "📊 Analytics & Reports",
         "👥 Class Management",
-        "⚙️ Settings"
+        "⚙️ Settings",
     ]
 
-    STUDENT_NAV_OPTIONS = [
+    STUDENT_NAV_OPTIONS: ClassVar[list[str]] = [
         "🏠 Dashboard",
         "📚 Practice Exercises",
         "📈 Progress Tracking",
         "❓ Ask Questions",
-        "⚙️ Settings"
+        "⚙️ Settings",
     ]
 
     # Subject options
-    SUBJECTS = [
-        "Math", "Science", "History", "Language",
-        "Physics", "Chemistry", "Biology", "Computer Science"
+    SUBJECTS: ClassVar[list[str]] = [
+        "Math",
+        "Science",
+        "History",
+        "Language",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Science",
     ]
 
     # Grade levels
-    GRADE_LEVELS = ["Elementary", "Middle School", "High School", "College"]
+    GRADE_LEVELS: ClassVar[list[str]] = [
+        "Elementary",
+        "Middle School",
+        "High School",
+        "College",
+    ]
 
     # Question types
-    QUESTION_TYPES = [
-        "Multiple Choice", "True/False", "Short Answer",
-        "Essay", "Calculation", "Fill in Blank"
+    QUESTION_TYPES: ClassVar[list[str]] = [
+        "Multiple Choice",
+        "True/False",
+        "Short Answer",
+        "Essay",
+        "Calculation",
+        "Fill in Blank",
     ]
 
     # Difficulty levels
-    DIFFICULTY_LEVELS = ["Easy", "Medium", "Hard"]
+    DIFFICULTY_LEVELS: ClassVar[list[str]] = ["Easy", "Medium", "Hard"]
 
     # Cognitive levels
-    COGNITIVE_LEVELS = [
-        "Memory", "Understanding", "Application",
-        "Analysis", "Evaluation", "Creation"
+    COGNITIVE_LEVELS: ClassVar[list[str]] = [
+        "Memory",
+        "Understanding",
+        "Application",
+        "Analysis",
+        "Evaluation",
+        "Creation",
     ]
 
     # Time periods for analytics
-    TIME_PERIODS = ["7 days", "30 days", "90 days", "All time"]
+    TIME_PERIODS: ClassVar[list[str]] = ["7 days", "30 days", "90 days", "All time"]
 
 
 class Defs:

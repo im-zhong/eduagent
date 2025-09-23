@@ -1,8 +1,11 @@
+# pyright: reportUnknownMemberType=none
+# Disable reportUnknownMemberType for this file to suppress Streamlit/Plotly method overload errors
+# These third-party libraries have complex method signatures that pyright cannot fully resolve
+
 """
 Student Interface for EduAgent System
 Provides tools for practice exercises, progress tracking, and question asking
 """
-
 
 import pandas as pd
 import plotly.express as px
@@ -10,11 +13,13 @@ import streamlit as st
 
 from eduagent.defs import defs
 
+from .api_client import EduAgentAPIClient
+
 
 class StudentInterface:
     """Student interface for learning and practice"""
 
-    def __init__(self, api_client) -> None:
+    def __init__(self, api_client: EduAgentAPIClient) -> None:
         self.api_client = api_client
         self.setup_page_config()
 
@@ -24,7 +29,7 @@ class StudentInterface:
             page_title=defs.ui.STUDENT_DASHBOARD_TITLE,
             page_icon=defs.ui.PAGE_ICON,
             layout="wide",
-            initial_sidebar_state="expanded"
+            initial_sidebar_state="expanded",
         )
 
     def render_sidebar(self) -> str:
@@ -40,8 +45,7 @@ class StudentInterface:
         st.sidebar.markdown("---")
 
         # Navigation using UI definitions
-        selected_nav = st.sidebar.radio("Navigation", defs.ui.STUDENT_NAV_OPTIONS)
-        return selected_nav
+        return st.sidebar.radio("Navigation", defs.ui.STUDENT_NAV_OPTIONS)
 
     def render_dashboard(self) -> None:
         """Render student dashboard"""
@@ -67,13 +71,16 @@ class StudentInterface:
         with col1:
             st.subheader("📈 Learning Progress")
             # Mock progress data
-            progress_data = pd.DataFrame({
-                "Date": pd.date_range("2024-01-01", periods=7, freq="D"),
-                "Accuracy": [65, 70, 72, 75, 78, 82, 85]
-            })
-            fig = px.line(progress_data, x="Date", y="Accuracy",
-                         title="Learning Progress Trend")
-            st.plotly_chart(fig, width='stretch')
+            progress_data = pd.DataFrame(
+                {
+                    "Date": pd.date_range("2024-01-01", periods=7, freq="D"),
+                    "Accuracy": [65, 70, 72, 75, 78, 82, 85],
+                }
+            )
+            fig = px.line(
+                progress_data, x="Date", y="Accuracy", title="Learning Progress Trend"
+            )
+            st.plotly_chart(fig, width="stretch")
 
         with col2:
             st.subheader("🎯 Recent Achievements")
@@ -81,7 +88,7 @@ class StudentInterface:
                 "Completed Algebra Practice",
                 "Mastered Geometry Concepts",
                 "Perfect Score on Math Quiz",
-                "7-Day Learning Streak"
+                "7-Day Learning Streak",
             ]
             for achievement in achievements:
                 st.success(f"🏆 {achievement}")
@@ -90,7 +97,9 @@ class StudentInterface:
         """Render practice exercises interface"""
         st.title("📚 Practice Exercises")
 
-        tab1, tab2, tab3 = st.tabs(["Start Practice", "Exercise History", "Recommended Practice"])
+        tab1, tab2, tab3 = st.tabs(
+            ["Start Practice", "Exercise History", "Recommended Practice"]
+        )
 
         with tab1:
             st.subheader("Start New Practice Session")
@@ -99,16 +108,26 @@ class StudentInterface:
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    subject = st.selectbox("Subject", defs.ui.SUBJECTS)
+                    _subject = st.selectbox("Subject", defs.ui.SUBJECTS)
                     knowledge_points = st.multiselect(
                         "Select Topics",
-                        ["Algebra", "Geometry", "Calculus", "Statistics", "Trigonometry"],
-                        help="Choose specific topics to practice"
+                        [
+                            "Algebra",
+                            "Geometry",
+                            "Calculus",
+                            "Statistics",
+                            "Trigonometry",
+                        ],
+                        help="Choose specific topics to practice",
                     )
 
                 with col2:
-                    difficulty = st.select_slider("Difficulty Level", options=defs.ui.DIFFICULTY_LEVELS)
-                    num_questions = st.slider("Number of Questions", min_value=5, max_value=20, value=10)
+                    difficulty = st.select_slider(
+                        "Difficulty Level", options=defs.ui.DIFFICULTY_LEVELS
+                    )
+                    num_questions = st.slider(
+                        "Number of Questions", min_value=5, max_value=20, value=10
+                    )
 
                 if st.form_submit_button("Start Practice Session"):
                     if knowledge_points:
@@ -119,7 +138,7 @@ class StudentInterface:
 
                             if "error" not in result:
                                 st.success("✅ Practice session created!")
-                                session_id = result.get("session_id", "N/A")
+                                _session_id = result.get("session_id", "N/A")
                                 st.session_state.current_session = result
                                 st.session_state.current_question_index = 0
                                 st.rerun()
@@ -129,7 +148,10 @@ class StudentInterface:
                         st.warning("Please select at least one topic")
 
             # Display current practice session if active
-            if hasattr(st.session_state, "current_session") and st.session_state.current_session:
+            if (
+                hasattr(st.session_state, "current_session")
+                and st.session_state.current_session
+            ):
                 self._render_current_practice()
 
         with tab2:
@@ -138,27 +160,65 @@ class StudentInterface:
 
             # Mock exercise history
             exercise_history = [
-                {"Date": "2024-01-15", "Subject": "Math", "Questions": 10, "Score": "85%"},
-                {"Date": "2024-01-14", "Subject": "Science", "Questions": 8, "Score": "78%"},
-                {"Date": "2024-01-13", "Subject": "Math", "Questions": 12, "Score": "92%"},
-                {"Date": "2024-01-12", "Subject": "History", "Questions": 6, "Score": "70%"},
+                {
+                    "Date": "2024-01-15",
+                    "Subject": "Math",
+                    "Questions": 10,
+                    "Score": "85%",
+                },
+                {
+                    "Date": "2024-01-14",
+                    "Subject": "Science",
+                    "Questions": 8,
+                    "Score": "78%",
+                },
+                {
+                    "Date": "2024-01-13",
+                    "Subject": "Math",
+                    "Questions": 12,
+                    "Score": "92%",
+                },
+                {
+                    "Date": "2024-01-12",
+                    "Subject": "History",
+                    "Questions": 6,
+                    "Score": "70%",
+                },
             ]
 
             df = pd.DataFrame(exercise_history)
-            st.dataframe(df, width='stretch')
+            st.dataframe(df, width="stretch")
 
         with tab3:
             st.subheader("Recommended Practice")
             st.info("Practice recommendations based on your learning patterns")
 
             recommendations = [
-                {"Topic": "Algebra Equations", "Reason": "Weak area identified", "Priority": "High"},
-                {"Topic": "Geometry Proofs", "Reason": "Recent improvement needed", "Priority": "Medium"},
-                {"Topic": "Statistics", "Reason": "Mastery achieved", "Priority": "Low"},
+                {
+                    "Topic": "Algebra Equations",
+                    "Reason": "Weak area identified",
+                    "Priority": "High",
+                },
+                {
+                    "Topic": "Geometry Proofs",
+                    "Reason": "Recent improvement needed",
+                    "Priority": "Medium",
+                },
+                {
+                    "Topic": "Statistics",
+                    "Reason": "Mastery achieved",
+                    "Priority": "Low",
+                },
             ]
 
             for rec in recommendations:
-                priority_color = "🔴" if rec["Priority"] == "High" else "🟡" if rec["Priority"] == "Medium" else "🟢"
+                priority_color = (
+                    "🔴"
+                    if rec["Priority"] == "High"
+                    else "🟡"
+                    if rec["Priority"] == "Medium"
+                    else "🟢"
+                )
                 st.write(f"{priority_color} **{rec['Topic']}**")
                 st.write(f"   Reason: {rec['Reason']}")
                 st.write(f"   Priority: {rec['Priority']}")
@@ -181,11 +241,13 @@ class StudentInterface:
             if question.get("question_type") == "multiple_choice":
                 options = question.get("options", [])
                 if options:
-                    selected_option = st.radio("Select your answer:",
-                                             [opt.get("text", "N/A") for opt in options])
+                    _selected_option = st.radio(
+                        "Select your answer:",
+                        [opt.get("text", "N/A") for opt in options],
+                    )
             else:
                 # For other question types
-                answer = st.text_area("Your answer:", height=100)
+                _answer = st.text_area("Your answer:", height=100)
 
             col1, col2 = st.columns([1, 4])
             with col1:
@@ -223,7 +285,9 @@ class StudentInterface:
         """Render progress tracking interface"""
         st.title("📈 Progress Tracking")
 
-        tab1, tab2, tab3 = st.tabs(["Performance Overview", "Subject Analysis", "Learning Insights"])
+        tab1, tab2, tab3 = st.tabs(
+            ["Performance Overview", "Subject Analysis", "Learning Insights"]
+        )
 
         with tab1:
             st.subheader("Overall Performance")
@@ -233,15 +297,15 @@ class StudentInterface:
                 "Subject": ["Math", "Science", "History", "Language"],
                 "Accuracy": [85, 78, 65, 72],
                 "Questions Answered": [156, 89, 45, 67],
-                "Average Time": [45, 52, 60, 48]
+                "Average Time": [45, 52, 60, 48],
             }
 
             df = pd.DataFrame(performance_data)
-            st.dataframe(df, width='stretch')
+            st.dataframe(df, width="stretch")
 
             # Performance chart
             fig = px.bar(df, x="Subject", y="Accuracy", title="Accuracy by Subject")
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, width="stretch")
 
         with tab2:
             st.subheader("Subject Analysis")
@@ -254,16 +318,20 @@ class StudentInterface:
                     "Topic": ["Algebra", "Geometry", "Calculus", "Statistics"],
                     "Accuracy": [82, 78, 65, 88],
                     "Questions": [45, 32, 28, 25],
-                    "Trend": ["↑ Improving", "→ Stable", "↓ Needs Work", "↑ Improving"]
+                    "Trend": ["↑ Improving", "→ Stable", "↓ Needs Work", "↑ Improving"],
                 }
 
                 df_topics = pd.DataFrame(topics_data)
-                st.dataframe(df_topics, width='stretch')
+                st.dataframe(df_topics, width="stretch")
 
                 # Topic accuracy chart
-                fig = px.bar(df_topics, x="Topic", y="Accuracy",
-                           title=f"{selected_subject} - Topic Accuracy")
-                st.plotly_chart(fig, width='stretch')
+                fig = px.bar(
+                    df_topics,
+                    x="Topic",
+                    y="Accuracy",
+                    title=f"{selected_subject} - Topic Accuracy",
+                )
+                st.plotly_chart(fig, width="stretch")
 
         with tab3:
             st.subheader("Learning Insights")
@@ -275,7 +343,7 @@ class StudentInterface:
                 "🎯 **Area to Improve**: Geometry proofs (65% accuracy)",
                 "⏱️ **Learning Pace**: You're answering questions 20% faster than average",
                 "📈 **Progress Trend**: Math accuracy improved by 15% in the last month",
-                "💡 **Recommendation**: Focus on geometry proofs for 15 minutes daily"
+                "💡 **Recommendation**: Focus on geometry proofs for 15 minutes daily",
             ]
 
             for insight in insights:
@@ -292,12 +360,14 @@ class StudentInterface:
             question_text = st.text_area(
                 "Enter your question:",
                 placeholder="Type your question here...",
-                height=150
+                height=150,
             )
 
-            subject = st.selectbox("Subject", defs.ui.SUBJECTS)
-            question_type = st.selectbox("Question Type",
-                                       ["Concept Explanation", "Homework Help", "Test Preparation"])
+            _subject = st.selectbox("Subject", defs.ui.SUBJECTS)
+            _question_type = st.selectbox(
+                "Question Type",
+                ["Concept Explanation", "Homework Help", "Test Preparation"],
+            )
 
             submitted = st.form_submit_button("Get Help")
 
@@ -330,13 +400,13 @@ class StudentInterface:
             {
                 "Question": "How do I solve quadratic equations?",
                 "Answer": "Use the quadratic formula or factoring method...",
-                "Date": "2024-01-15"
+                "Date": "2024-01-15",
             },
             {
                 "Question": "What's the difference between mean and median?",
                 "Answer": "Mean is the average, median is the middle value...",
-                "Date": "2024-01-14"
-            }
+                "Date": "2024-01-14",
+            },
         ]
 
         for qa in qa_history:
@@ -349,20 +419,19 @@ class StudentInterface:
 
         st.subheader("Learning Preferences")
 
-        difficulty_preference = st.select_slider(
+        _difficulty_preference = st.select_slider(
             "Preferred Difficulty Level",
             options=defs.ui.DIFFICULTY_LEVELS,
-            value="Medium"
+            value="Medium",
         )
 
-        daily_goal = st.slider(
-            "Daily Practice Goal (questions)",
-            min_value=5, max_value=50, value=15
+        _daily_goal = st.slider(
+            "Daily Practice Goal (questions)", min_value=5, max_value=50, value=15
         )
 
-        notification_preferences = st.multiselect(
+        _notification_preferences = st.multiselect(
             "Notifications",
-            ["Practice Reminders", "Progress Updates", "New Content", "Achievements"]
+            ["Practice Reminders", "Progress Updates", "New Content", "Achievements"],
         )
 
         if st.button("Save Preferences"):
@@ -372,7 +441,7 @@ class StudentInterface:
         api_url = st.text_input(
             "API Base URL",
             value=self.api_client.base_url,
-            help="URL of the EduAgent API server"
+            help="URL of the EduAgent API server",
         )
 
         if st.button("Update API Settings"):

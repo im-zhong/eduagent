@@ -1,9 +1,10 @@
 import uuid
-from datetime import datetime
-from typing import Any, TypeVar
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload, sessionmaker
 
 from .models import (
     AnalyticsSnapshot,
@@ -22,6 +23,14 @@ from .models import (
     UserRole,
 )
 
+if TYPE_CHECKING:
+    pass
+
+
+class ModelWithId(Protocol):
+    id: uuid.UUID
+
+
 T = TypeVar("T", bound=Base)
 
 
@@ -31,7 +40,7 @@ class DatabaseService:
     for the educational AI system, encapsulating SQLAlchemy operations.
     """
 
-    def __init__(self, session_factory):
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self.session_factory = session_factory
 
     # ============ Generic CRUD Operations ============
@@ -43,17 +52,10 @@ class DatabaseService:
                 session.add(model_instance)
                 session.commit()
                 session.refresh(model_instance)
-                return model_instance
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
-
-    def get_by_id(self, model_class: type[T], record_id: uuid.UUID) -> T | None:
-        """Retrieve a record by its ID"""
-        with self.session_factory() as session:
-            return (
-                session.query(model_class).filter(model_class.id == record_id).first()
-            )
+                raise
+            return model_instance
 
     def get_all(
         self, model_class: type[T], limit: int = 100, offset: int = 0
@@ -69,10 +71,10 @@ class DatabaseService:
                 session.merge(model_instance)
                 session.commit()
                 session.refresh(model_instance)
-                return model_instance
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
+            return model_instance
 
     def delete(self, model_instance: Base) -> bool:
         """Delete a record"""
@@ -80,10 +82,10 @@ class DatabaseService:
             try:
                 session.delete(model_instance)
                 session.commit()
-                return True
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
+            return True
 
     # ============ User Management Operations ============
 
@@ -107,12 +109,12 @@ class DatabaseService:
         with self.session_factory() as session:
             try:
                 session.query(User).filter(User.id == user_id).update(
-                    {User.last_login: datetime.utcnow()}
+                    {User.last_login: datetime.now(UTC)}
                 )
                 session.commit()
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
 
     # ============ Textbook & Knowledge Operations ============
 
@@ -158,17 +160,21 @@ class DatabaseService:
         """Update textbook extraction status"""
         with self.session_factory() as session:
             try:
-                update_data = {Textbook.extraction_status: status}
                 if status == "completed":
-                    update_data[Textbook.processed_at] = datetime.utcnow()
-
-                session.query(Textbook).filter(Textbook.id == textbook_id).update(
-                    update_data
-                )
+                    session.query(Textbook).filter(Textbook.id == textbook_id).update(
+                        {
+                            Textbook.extraction_status: status,
+                            Textbook.processed_at: datetime.now(UTC),
+                        }
+                    )
+                else:
+                    session.query(Textbook).filter(Textbook.id == textbook_id).update(
+                        {Textbook.extraction_status: status}
+                    )
                 session.commit()
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
 
     # ============ Question Operations ============
 
@@ -194,11 +200,11 @@ class DatabaseService:
             return query.all()
 
     def get_ai_generated_questions(
-        self, reviewed: bool | None = None
+        self, *, reviewed: bool | None = None
     ) -> list[Question]:
         """Get AI-generated questions, optionally filtered by review status"""
         with self.session_factory() as session:
-            query = session.query(Question).filter(Question.generated_by_ai == True)
+            query = session.query(Question).filter(Question.generated_by_ai)
             if reviewed is not None:
                 query = query.filter(Question.reviewed_by_teacher == reviewed)
             return query.all()
@@ -209,17 +215,16 @@ class DatabaseService:
         """Mark a question as reviewed by teacher"""
         with self.session_factory() as session:
             try:
-                update_data = {
-                    Question.reviewed_by_teacher: True,
-                    Question.review_notes: notes,
-                }
                 session.query(Question).filter(Question.id == question_id).update(
-                    update_data
+                    {
+                        Question.reviewed_by_teacher: True,
+                        Question.review_notes: notes,
+                    }
                 )
                 session.commit()
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
 
     # ============ Exercise & Practice Operations ============
 
@@ -236,16 +241,18 @@ class DatabaseService:
                 # Associate questions
                 for question_id in question_ids:
                     session.execute(
-                        "INSERT INTO exercise_question (exercise_id, question_id) VALUES (:ex_id, :q_id)",
+                        text(
+                            "INSERT INTO exercise_question (exercise_id, question_id) VALUES (:ex_id, :q_id)"
+                        ),
                         {"ex_id": exercise.id, "q_id": question_id},
                     )
 
                 session.commit()
                 session.refresh(exercise)
-                return exercise
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
+            return exercise
 
     def get_exercise_with_questions(self, exercise_id: uuid.UUID) -> Exercise | None:
         """Get exercise with all associated questions"""
@@ -267,7 +274,7 @@ class DatabaseService:
                     session.query(Exercise).filter(Exercise.id == exercise_id).first()
                 )
                 if not exercise:
-                    raise ValueError("Exercise not found")
+                    raise ValueError
 
                 session_obj = PracticeSession(
                     student_id=student_id,
@@ -277,10 +284,10 @@ class DatabaseService:
                 session.add(session_obj)
                 session.commit()
                 session.refresh(session_obj)
-                return session_obj
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
+            return session_obj
 
     def complete_practice_session(
         self, session_id: uuid.UUID, total_score: float, accuracy: float
@@ -292,16 +299,16 @@ class DatabaseService:
                     PracticeSession.id == session_id
                 ).update(
                     {
-                        PracticeSession.end_time: datetime.utcnow(),
+                        PracticeSession.end_time: datetime.now(UTC),
                         PracticeSession.completed: True,
                         PracticeSession.total_score: total_score,
                         PracticeSession.accuracy: accuracy,
                     }
                 )
                 session.commit()
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
 
     # ============ Assessment & Analytics Operations ============
 
@@ -313,10 +320,10 @@ class DatabaseService:
                 session.add(submission)
                 session.commit()
                 session.refresh(submission)
-                return submission
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
+            return submission
 
     def get_student_performance(
         self,
@@ -381,10 +388,10 @@ class DatabaseService:
                 session.add(snapshot)
                 session.commit()
                 session.refresh(snapshot)
-                return snapshot
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
+            return snapshot
 
     # ============ Advanced Query Operations ============
 
@@ -425,7 +432,7 @@ class DatabaseService:
                 .all()
             )
 
-            graph_data = {"nodes": [], "links": []}
+            graph_data: dict[str, list[dict[str, str]]] = {"nodes": [], "links": []}
 
             for kp in knowledge_points:
                 graph_data["nodes"].append(
@@ -447,7 +454,7 @@ class DatabaseService:
         """Batch create multiple questions"""
         with self.session_factory() as session:
             try:
-                questions = []
+                questions: list[Question] = []
                 for data in questions_data:
                     question = Question(**data)
                     session.add(question)
@@ -459,10 +466,10 @@ class DatabaseService:
                 for question in questions:
                     session.refresh(question)
 
-                return questions
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise
+            return questions
 
     def batch_associate_questions_knowledge_points(
         self, associations: list[dict[str, uuid.UUID]]
@@ -472,13 +479,15 @@ class DatabaseService:
             try:
                 for assoc in associations:
                     session.execute(
-                        "INSERT INTO question_knowledge_point (question_id, knowledge_point_id) VALUES (:q_id, :kp_id)",
+                        text(
+                            "INSERT INTO question_knowledge_point (question_id, knowledge_point_id) VALUES (:q_id, :kp_id)"
+                        ),
                         {
                             "q_id": assoc["question_id"],
                             "kp_id": assoc["knowledge_point_id"],
                         },
                     )
                 session.commit()
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 session.rollback()
-                raise e
+                raise

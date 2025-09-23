@@ -1,7 +1,13 @@
 from abc import abstractmethod
-from typing import Any
 
 from .base import BaseTool
+from .types import (
+    FilterCriteria,
+    SubmissionData,
+    TextbookMetadata,
+    ToolParameters,
+    ToolResult,
+)
 
 
 class RAGTool(BaseTool):
@@ -13,17 +19,13 @@ class RAGTool(BaseTool):
     def __init__(self) -> None:
         super().__init__(
             tool_name="rag_knowledge_tool",
-            description="Extract knowledge from documents and retrieve relevant educational content"
+            description="Extract knowledge from documents and retrieve relevant educational content",
         )
-        # Define tool parameters
-        self.add_parameter("file_path", "Path to document file", required=True)
-        self.add_parameter("textbook_metadata", "Metadata for the textbook", required=True)
-        self.add_parameter("user_query", "User query for knowledge retrieval")
-        self.add_parameter("textbook_id", "ID of specific textbook to query")
-        self.add_parameter("filters", "Additional filters for retrieval")
 
     @abstractmethod
-    def extract_knowledge(self, file_path: str, textbook_metadata: dict[str, Any]) -> dict[str, Any]:
+    def extract_knowledge(
+        self, file_path: str, textbook_metadata: TextbookMetadata
+    ) -> ToolResult:
         """
         Extract knowledge from a document and store in database
 
@@ -36,10 +38,12 @@ class RAGTool(BaseTool):
         """
 
     @abstractmethod
-    def query_knowledge(self,
-                       user_query: str,
-                       textbook_id: str | None = None,
-                       filters: dict[str, Any] | None = None) -> dict[str, Any]:
+    def query_knowledge(
+        self,
+        user_query: str,
+        textbook_id: str | None = None,
+        filters: FilterCriteria | None = None,
+    ) -> ToolResult:
         """
         Query the knowledge base for relevant information
 
@@ -53,7 +57,7 @@ class RAGTool(BaseTool):
         """
 
     @abstractmethod
-    def get_knowledge_graph(self, textbook_id: str) -> dict[str, Any]:
+    def get_knowledge_graph(self, textbook_id: str) -> ToolResult:
         """
         Retrieve knowledge graph data for a textbook
 
@@ -64,54 +68,49 @@ class RAGTool(BaseTool):
             Dictionary with knowledge graph data
         """
 
-    def execute(self, **kwargs: Any) -> dict[str, Any]:
+    def execute(
+        self,
+        operation: str,
+        file_path: str | None = None,
+        textbook_metadata: TextbookMetadata | None = None,
+        user_query: str | None = None,
+        submissions: list[SubmissionData] | None = None,  # noqa: ARG002
+    ) -> ToolResult:
         """Execute RAG tool operation based on parameters"""
-        operation = kwargs.get("operation", "query")
-
-        if operation == "extract":
-            return self.extract_knowledge(
-                kwargs["file_path"],
-                kwargs["textbook_metadata"]
+        if operation == "extract" and file_path and textbook_metadata:
+            return self.extract_knowledge(file_path, textbook_metadata)
+        if operation == "query" and user_query:
+            return self.query_knowledge(user_query)
+        if operation == "graph" and user_query:
+            textbook_id = (
+                user_query.split(":")[1].strip() if ":" in user_query else user_query
             )
-        if operation == "query":
-            return self.query_knowledge(
-                kwargs["user_query"],
-                kwargs.get("textbook_id"),
-                kwargs.get("filters")
-            )
-        if operation == "graph":
-            return self.get_knowledge_graph(kwargs["textbook_id"])
-        return {"error": f"Unknown operation: {operation}"}
+            return self.get_knowledge_graph(textbook_id)
+        return ToolResult(
+            success=False, error=f"Unknown or invalid operation: {operation}"
+        )
 
-    def validate_parameters(self, parameters: dict[str, Any]) -> bool:
+    def validate_parameters(self, parameters: ToolParameters) -> bool:
         """Validate RAG tool parameters"""
-        operation = parameters.get("operation", "query")
+        operation = parameters.operation
 
         if operation == "extract":
-            return "file_path" in parameters and "textbook_metadata" in parameters
+            return parameters.question_text is not None
         if operation == "query":
-            return "user_query" in parameters
+            return parameters.question_text is not None
         if operation == "graph":
-            return "textbook_id" in parameters
+            return parameters.question_text is not None
         return False
 
-    def get_tool_schema(self) -> dict[str, Any]:
+    def get_tool_schema(self) -> ToolResult:
         """Return RAG tool schema"""
-        return {
-            "name": self.tool_name,
-            "description": self.description,
-            "version": self.version,
-            "operations": ["extract", "query", "graph"],
-            "parameters": self.parameters
-        }
+        return ToolResult(
+            result_type="tool_schema", message=f"RAG tool schema for {self.tool_name}"
+        )
 
-    def get_tool_capabilities(self) -> dict[str, Any]:
+    def get_tool_capabilities(self) -> ToolResult:
         """Return RAG tool capabilities"""
-        return {
-            "supported_file_formats": ["pdf", "docx", "txt", "md"],
-            "knowledge_extraction": True,
-            "semantic_search": True,
-            "knowledge_graph_generation": True,
-            "multi_modal_support": True,
-            "real_time_processing": False
-        }
+        return ToolResult(
+            result_type="tool_capabilities",
+            message="RAG tool capabilities: supported_file_formats (pdf, docx, txt, md), knowledge_extraction, semantic_search, knowledge_graph_generation, multi_modal_support, real_time_processing",
+        )

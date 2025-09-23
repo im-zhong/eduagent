@@ -15,12 +15,11 @@ class AssessmentAgent(BaseAgent):
         super().__init__(
             agent_id=agent_id,
             name="Assessment Agent",
-            description="Evaluates student answers and provides detailed feedback and analysis"
+            description="Evaluates student answers and provides detailed feedback and analysis",
         )
 
     @abstractmethod
-    def evaluate_answers(self,
-                        submissions: list[dict[str, Any]]) -> dict[str, Any]:
+    def evaluate_answers(self, submissions: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Evaluate student answers and provide assessment results
 
@@ -32,9 +31,9 @@ class AssessmentAgent(BaseAgent):
         """
 
     @abstractmethod
-    def provide_detailed_feedback(self,
-                                submission_id: uuid.UUID,
-                                student_answer: str) -> dict[str, Any]:
+    def provide_detailed_feedback(
+        self, submission_id: uuid.UUID, student_answer: str
+    ) -> dict[str, Any]:
         """
         Provide detailed feedback on a specific student answer
 
@@ -47,9 +46,9 @@ class AssessmentAgent(BaseAgent):
         """
 
     @abstractmethod
-    def identify_mistake_patterns(self,
-                                student_id: uuid.UUID,
-                                time_period: str | None = None) -> dict[str, Any]:
+    def identify_mistake_patterns(
+        self, student_id: uuid.UUID, time_period: str | None = None
+    ) -> dict[str, Any]:
         """
         Identify common mistake patterns for a student
 
@@ -62,8 +61,9 @@ class AssessmentAgent(BaseAgent):
         """
 
     @abstractmethod
-    def generate_remediation_suggestions(self,
-                                       mistake_analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    def generate_remediation_suggestions(
+        self, mistake_analysis: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Generate personalized remediation suggestions based on mistake analysis
 
@@ -75,9 +75,9 @@ class AssessmentAgent(BaseAgent):
         """
 
     @abstractmethod
-    def calculate_performance_metrics(self,
-                                   student_id: uuid.UUID,
-                                   knowledge_point_ids: list[uuid.UUID] | None = None) -> dict[str, Any]:
+    def calculate_performance_metrics(
+        self, student_id: uuid.UUID, knowledge_point_ids: list[uuid.UUID] | None = None
+    ) -> dict[str, Any]:
         """
         Calculate comprehensive performance metrics for a student
 
@@ -90,9 +90,9 @@ class AssessmentAgent(BaseAgent):
         """
 
     @abstractmethod
-    def compare_with_peers(self,
-                         student_id: uuid.UUID,
-                         class_id: uuid.UUID) -> dict[str, Any]:
+    def compare_with_peers(
+        self, student_id: uuid.UUID, class_id: uuid.UUID
+    ) -> dict[str, Any]:
         """
         Compare student performance with peers in the same class
 
@@ -110,7 +110,8 @@ class AssessmentAgent(BaseAgent):
 
     def process_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """Process assessment request"""
-        # Main request processing logic
+        error_msg = "Concrete assessment agents must implement process_request method"
+        raise NotImplementedError(error_msg)
 
     def get_available_actions(self) -> list[str]:
         """Return available actions for this agent"""
@@ -120,19 +121,24 @@ class AssessmentAgent(BaseAgent):
             "identify_mistake_patterns",
             "generate_remediation_suggestions",
             "calculate_performance_metrics",
-            "compare_with_peers"
+            "compare_with_peers",
         ]
 
     def validate_request(self, request: dict[str, Any]) -> bool:
         """Validate if request is suitable for assessment"""
-        # Validation logic
+        error_msg = "Concrete assessment agents must implement validate_request method"
+        raise NotImplementedError(error_msg)
 
     def get_agent_capabilities(self) -> dict[str, Any]:
         """Return agent capabilities"""
         return {
             "agent_type": "assessment",
-            "supported_assessment_types": ["auto_grading", "feedback_generation", "analytics"],
+            "supported_assessment_types": [
+                "auto_grading",
+                "feedback_generation",
+                "analytics",
+            ],
             "feedback_granularity": ["detailed", "summary", "actionable"],
             "analytics_depth": ["basic", "comprehensive", "predictive"],
-            "real_time_processing": True
+            "real_time_processing": True,
         }

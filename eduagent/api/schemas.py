@@ -94,18 +94,30 @@ class KnowledgeGraphResponse(BaseModel):
 # ============ Question Generation Schemas ============
 class QuestionGenerationRequest(BaseModel):
     knowledge_point_ids: list[str] = Field(..., description="Target knowledge points")
-    question_type: QuestionType = Field(QuestionType.MULTIPLE_CHOICE, description="Question type")
-    difficulty: DifficultyLevel = Field(DifficultyLevel.MEDIUM, description="Difficulty level")
-    num_questions: int = Field(1, ge=1, le=10, description="Number of questions to generate")
-    cognitive_level: CognitiveLevel | None = Field(None, description="Specific cognitive level target")
-    include_explanation: bool = Field(True, description="Include answer explanation")
+    question_type: QuestionType = Field(
+        QuestionType.MULTIPLE_CHOICE, description="Question type"
+    )
+    difficulty: DifficultyLevel = Field(
+        DifficultyLevel.MEDIUM, description="Difficulty level"
+    )
+    num_questions: int = Field(
+        1, ge=1, le=10, description="Number of questions to generate"
+    )
+    cognitive_level: CognitiveLevel | None = Field(
+        None, description="Specific cognitive level target"
+    )
+    include_explanation: bool = Field(
+        default=True, description="Include answer explanation"
+    )
 
 
 class QuestionOption(BaseModel):
     id: str
     text: str
     is_correct: bool
-    mistake_pattern: str | None = Field(None, description="Associated mistake pattern if incorrect")
+    mistake_pattern: str | None = Field(
+        None, description="Associated mistake pattern if incorrect"
+    )
 
 
 class GeneratedQuestion(BaseModel):

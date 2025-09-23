@@ -11,14 +11,19 @@ from .schemas import (
     # Assessment & Feedback
     AssessmentRequest,
     AssessmentResponse,
+    AssessmentResult,
     BatchOperationResponse,
+    # Enums
+    CognitiveLevel,
     DifficultyControlRequest,
     DifficultyControlResponse,
+    DifficultyLevel,
     # Exercise & Practice
     ExerciseCreateRequest,
     ExerciseResponse,
     FeedbackRequest,
     FeedbackResponse,
+    GeneratedQuestion,
     # System
     HealthCheckResponse,
     # Knowledge Extraction
@@ -36,9 +41,12 @@ from .schemas import (
     # Question Generation
     QuestionGenerationRequest,
     QuestionGenerationResponse,
+    QuestionType,
+    SubjectArea,
     # User Management
     UserCreateRequest,
     UserResponse,
+    UserRole,
 )
 
 router = APIRouter()
@@ -81,27 +89,34 @@ async def get_knowledge_graph(textbook_id: str) -> KnowledgeGraphResponse:
     Retrieve 3D knowledge graph for a textbook
     """
     # Mock implementation
+    _ = textbook_id  # Avoid unused variable warning
     return KnowledgeGraphResponse(
         knowledge_points=[], ability_targets=[], common_mistakes=[], graph_structure={}
     )
 
 
 # ============ Question Generation Endpoints ============
-@router.post("/questions/generate", response_model=QuestionGenerationResponse)
-async def generate_questions(request: QuestionGenerationRequest) -> QuestionGenerationResponse:
+@router.post("/questions/generate")
+async def generate_questions(
+    request: QuestionGenerationRequest,
+) -> QuestionGenerationResponse:
     """
     Generate educational questions based on knowledge points and constraints
     """
     # Mock implementation
-    sample_question = {
-        "id": str(uuid.uuid4()),
-        "question_text": "Sample generated question",
-        "question_type": request.question_type,
-        "difficulty": request.difficulty,
-        "cognitive_level": "understanding",
-        "knowledge_point_ids": request.knowledge_point_ids,
-        "estimated_difficulty": 0.6,
-    }
+    sample_question = GeneratedQuestion(
+        id=str(uuid.uuid4()),
+        question_text="Sample generated question",
+        question_type=request.question_type,
+        difficulty=request.difficulty,
+        cognitive_level=CognitiveLevel.UNDERSTANDING,
+        knowledge_point_ids=request.knowledge_point_ids,
+        estimated_difficulty=0.6,
+        options=None,
+        correct_answer=None,
+        explanation=None,
+        solution_steps=None,
+    )
 
     return QuestionGenerationResponse(
         questions=[sample_question],
@@ -111,7 +126,9 @@ async def generate_questions(request: QuestionGenerationRequest) -> QuestionGene
 
 
 @router.post("/questions/difficulty/control")
-async def control_question_difficulty(request: DifficultyControlRequest) -> DifficultyControlResponse:
+async def control_question_difficulty(
+    request: DifficultyControlRequest,
+) -> DifficultyControlResponse:
     """
     Adjust question difficulty based on educational constraints
     """
@@ -125,11 +142,14 @@ async def control_question_difficulty(request: DifficultyControlRequest) -> Diff
 
 
 @router.post("/questions/distractors/generate")
-async def generate_distractors(question_text: str, knowledge_point_id: str) -> dict[str, Any]:
+async def generate_distractors(
+    question_text: str, knowledge_point_id: str
+) -> dict[str, Any]:
     """
     Generate cognitively appropriate distractors for multiple choice questions
     """
     # Mock implementation
+    _ = question_text, knowledge_point_id  # Avoid unused variable warnings
     return {
         "distractors": [
             {"text": "Common mistake 1", "mistake_pattern": "conceptual_error"},
@@ -145,19 +165,18 @@ async def evaluate_answers(request: AssessmentRequest) -> AssessmentResponse:
     Evaluate student answers and provide detailed assessment
     """
     # Mock implementation
-    results = []
-    for submission in request.submissions:
-        results.append(
-            {
-                "question_id": submission.question_id,
-                "is_correct": True,
-                "score": 1.0,
-                "feedback": "Good job!",
-                "correct_answer": "Sample answer",
-                "explanation": "Sample explanation",
-                "mistake_pattern": None,
-            }
+    results = [
+        AssessmentResult(
+            question_id=submission.question_id,
+            is_correct=True,
+            score=1.0,
+            feedback="Good job!",
+            correct_answer="Sample answer",
+            explanation="Sample explanation",
+            mistake_pattern=None,
         )
+        for submission in request.submissions
+    ]
 
     return AssessmentResponse(
         results=results,
@@ -174,6 +193,7 @@ async def provide_feedback(request: FeedbackRequest) -> FeedbackResponse:
     Provide detailed feedback on student answers
     """
     # Mock implementation
+    _ = request  # Avoid unused variable warning
     return FeedbackResponse(
         score=0.8,
         detailed_feedback="Good attempt with minor errors",
@@ -211,7 +231,9 @@ async def login_user(request: LoginRequest) -> LoginResponse:
         id=str(uuid.uuid4()),
         username=request.username,
         email=f"{request.username}@example.com",
-        role="student",
+        role=UserRole.STUDENT,
+        grade_level=None,
+        subject_interests=None,
         created_at=datetime.now(UTC),
         is_active=True,
     )
@@ -229,7 +251,9 @@ async def get_user_profile(user_id: str) -> UserResponse:
         id=user_id,
         username="sample_user",
         email="user@example.com",
-        role="student",
+        role=UserRole.STUDENT,
+        grade_level=None,
+        subject_interests=None,
         created_at=datetime.now(UTC),
         is_active=True,
     )
@@ -255,24 +279,29 @@ async def create_exercise(request: ExerciseCreateRequest) -> ExerciseResponse:
 
 
 @router.post("/practice/session")
-async def start_practice_session(request: PracticeSessionRequest) -> PracticeSessionResponse:
+async def start_practice_session(
+    request: PracticeSessionRequest,
+) -> PracticeSessionResponse:
     """
     Start a new practice session for students
     """
     # Mock implementation
-    questions = []
-    for i in range(request.num_questions):
-        questions.append(
-            {
-                "id": str(uuid.uuid4()),
-                "question_text": f"Practice question {i + 1}",
-                "question_type": "multiple_choice",
-                "difficulty": request.difficulty,
-                "cognitive_level": "understanding",
-                "knowledge_point_ids": request.knowledge_point_ids or ["kp_123"],
-                "estimated_difficulty": 0.6,
-            }
+    questions = [
+        GeneratedQuestion(
+            id=str(uuid.uuid4()),
+            question_text=f"Practice question {i + 1}",
+            question_type=QuestionType.MULTIPLE_CHOICE,
+            difficulty=request.difficulty,
+            cognitive_level=CognitiveLevel.UNDERSTANDING,
+            knowledge_point_ids=request.knowledge_point_ids or ["kp_123"],
+            estimated_difficulty=0.6,
+            options=None,
+            correct_answer=None,
+            explanation=None,
+            solution_steps=None,
         )
+        for i in range(request.num_questions)
+    ]
 
     return PracticeSessionResponse(
         session_id=str(uuid.uuid4()),
@@ -292,8 +321,8 @@ async def get_exercise(exercise_id: str) -> ExerciseResponse:
         id=exercise_id,
         title="Sample Exercise",
         description="Sample exercise description",
-        subject="math",
-        difficulty="medium",
+        subject=SubjectArea.MATH,
+        difficulty=DifficultyLevel.MEDIUM,
         question_ids=[str(uuid.uuid4()) for _ in range(10)],
         created_at=datetime.now(UTC),
         created_by="teacher_123",
@@ -302,11 +331,14 @@ async def get_exercise(exercise_id: str) -> ExerciseResponse:
 
 # ============ Analytics & Reporting Endpoints ============
 @router.post("/analytics/performance")
-async def get_performance_analytics(request: PerformanceAnalyticsRequest) -> PerformanceAnalyticsResponse:
+async def get_performance_analytics(
+    request: PerformanceAnalyticsRequest,
+) -> PerformanceAnalyticsResponse:
     """
     Get performance analytics for students or classes
     """
     # Mock implementation
+    _ = request  # Avoid unused variable warning
     return PerformanceAnalyticsResponse(
         overall_accuracy=0.75,
         total_attempts=100,
@@ -323,6 +355,7 @@ async def analyze_mistakes(request: MistakeAnalysisRequest) -> MistakeAnalysisRe
     Analyze mistake patterns and provide remediation suggestions
     """
     # Mock implementation
+    _ = request  # Avoid unused variable warning
     return MistakeAnalysisResponse(
         mistake_patterns=[
             {"pattern": "conceptual_error", "frequency": 15},
@@ -338,7 +371,9 @@ async def analyze_mistakes(request: MistakeAnalysisRequest) -> MistakeAnalysisRe
 
 
 @router.get("/analytics/class/{class_id}")
-async def get_class_analytics(class_id: str, time_period: str | None = "30d") -> dict[str, Any]:
+async def get_class_analytics(
+    class_id: str, time_period: str | None = "30d"
+) -> dict[str, Any]:
     """
     Get analytics for entire class
     """
@@ -371,7 +406,9 @@ async def health_check() -> HealthCheckResponse:
 
 
 @router.post("/batch/questions/generate")
-async def batch_generate_questions(requests: list[QuestionGenerationRequest]) -> BatchOperationResponse:
+async def batch_generate_questions(
+    requests: list[QuestionGenerationRequest],
+) -> BatchOperationResponse:
     """
     Batch generate questions for multiple knowledge points
     """

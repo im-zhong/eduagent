@@ -15,13 +15,13 @@ class QuestionGeneratorAgent(BaseAgent):
         super().__init__(
             agent_id=agent_id,
             name="Question Generator Agent",
-            description="Generates educational questions based on knowledge points and constraints"
+            description="Generates educational questions based on knowledge points and constraints",
         )
 
     @abstractmethod
-    def generate_questions(self,
-                         knowledge_point_ids: list[uuid.UUID],
-                         constraints: dict[str, Any]) -> dict[str, Any]:
+    def generate_questions(
+        self, knowledge_point_ids: list[uuid.UUID], constraints: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate questions based on knowledge points and educational constraints
 
@@ -34,9 +34,9 @@ class QuestionGeneratorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def adjust_difficulty(self,
-                         question_text: str,
-                         target_difficulty: float) -> dict[str, Any]:
+    def adjust_difficulty(
+        self, question_text: str, target_difficulty: float
+    ) -> dict[str, Any]:
         """
         Adjust question difficulty while maintaining educational value
 
@@ -49,9 +49,9 @@ class QuestionGeneratorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def generate_distractors(self,
-                           question_text: str,
-                           knowledge_point_id: uuid.UUID) -> list[dict[str, Any]]:
+    def generate_distractors(
+        self, question_text: str, knowledge_point_id: uuid.UUID
+    ) -> list[dict[str, Any]]:
         """
         Generate cognitively appropriate distractors for multiple choice questions
 
@@ -64,8 +64,9 @@ class QuestionGeneratorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def batch_generate_questions(self,
-                               generation_requests: list[dict[str, Any]]) -> dict[str, Any]:
+    def batch_generate_questions(
+        self, generation_requests: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Batch generate questions for multiple knowledge points
 
@@ -77,7 +78,9 @@ class QuestionGeneratorAgent(BaseAgent):
         """
 
     @abstractmethod
-    def validate_question_quality(self, question_data: dict[str, Any]) -> dict[str, Any]:
+    def validate_question_quality(
+        self, question_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Validate generated question quality based on educational standards
 
@@ -94,7 +97,10 @@ class QuestionGeneratorAgent(BaseAgent):
 
     def process_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """Process question generation request"""
-        # Main request processing logic
+        error_msg = (
+            "Concrete question generator agents must implement process_request method"
+        )
+        raise NotImplementedError(error_msg)
 
     def get_available_actions(self) -> list[str]:
         """Return available actions for this agent"""
@@ -103,12 +109,15 @@ class QuestionGeneratorAgent(BaseAgent):
             "adjust_difficulty",
             "generate_distractors",
             "batch_generate_questions",
-            "validate_question_quality"
+            "validate_question_quality",
         ]
 
     def validate_request(self, request: dict[str, Any]) -> bool:
         """Validate if request is suitable for question generation"""
-        # Validation logic
+        error_msg = (
+            "Concrete question generator agents must implement validate_request method"
+        )
+        raise NotImplementedError(error_msg)
 
     def get_agent_capabilities(self) -> dict[str, Any]:
         """Return agent capabilities"""
@@ -117,5 +126,12 @@ class QuestionGeneratorAgent(BaseAgent):
             "supported_question_types": ["multiple_choice", "short_answer", "essay"],
             "supported_subjects": ["math", "science", "language_arts"],
             "difficulty_range": [0.1, 1.0],
-            "cognitive_levels": ["remember", "understand", "apply", "analyze", "evaluate", "create"]
+            "cognitive_levels": [
+                "remember",
+                "understand",
+                "apply",
+                "analyze",
+                "evaluate",
+                "create",
+            ],
         }

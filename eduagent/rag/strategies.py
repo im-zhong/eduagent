@@ -7,29 +7,39 @@ from .retrieval import KnowledgeExtractionStrategy, RetrievalStrategy
 
 # ============ Knowledge Extraction Strategies ============
 
+
 class GLMExtractionStrategy(KnowledgeExtractionStrategy):
     """
     Knowledge extraction strategy using GLM models
     Focuses on multi-modal content analysis
     """
 
-    def extract_knowledge_points(self,
-                               document_sections: list[dict[str, Any]],
-                               textbook_id: uuid.UUID) -> list[KnowledgePoint]:
+    def extract_knowledge_points(
+        self, document_sections: list[dict[str, Any]], textbook_id: uuid.UUID
+    ) -> list[KnowledgePoint]:
         """Extract knowledge points using GLM model"""
-        # Implementation would use GLM for multi-modal analysis
+        error_msg = (
+            "GLM extraction strategy must implement extract_knowledge_points method"
+        )
+        raise NotImplementedError(error_msg)
 
-    def extract_ability_targets(self,
-                              knowledge_point: KnowledgePoint,
-                              context: dict[str, Any]) -> list[AbilityTarget]:
+    def extract_ability_targets(
+        self, knowledge_point: KnowledgePoint, context: dict[str, Any]
+    ) -> list[AbilityTarget]:
         """Extract ability targets using GLM"""
-        # Implementation would analyze knowledge point with GLM
+        error_msg = (
+            "GLM extraction strategy must implement extract_ability_targets method"
+        )
+        raise NotImplementedError(error_msg)
 
-    def extract_common_mistakes(self,
-                              knowledge_point: KnowledgePoint,
-                              context: dict[str, Any]) -> list[CommonMistake]:
+    def extract_common_mistakes(
+        self, knowledge_point: KnowledgePoint, context: dict[str, Any]
+    ) -> list[CommonMistake]:
         """Extract common mistakes using GLM"""
-        # Implementation would identify common error patterns
+        error_msg = (
+            "GLM extraction strategy must implement extract_common_mistakes method"
+        )
+        raise NotImplementedError(error_msg)
 
 
 class RuleBasedExtractionStrategy(KnowledgeExtractionStrategy):
@@ -38,23 +48,26 @@ class RuleBasedExtractionStrategy(KnowledgeExtractionStrategy):
     Focuses on structured content analysis
     """
 
-    def extract_knowledge_points(self,
-                               document_sections: list[dict[str, Any]],
-                               textbook_id: uuid.UUID) -> list[KnowledgePoint]:
+    def extract_knowledge_points(
+        self, document_sections: list[dict[str, Any]], textbook_id: uuid.UUID
+    ) -> list[KnowledgePoint]:
         """Extract knowledge points using rule-based approach"""
-        # Implementation would use predefined extraction rules
+        error_msg = "Rule-based extraction strategy must implement extract_knowledge_points method"
+        raise NotImplementedError(error_msg)
 
-    def extract_ability_targets(self,
-                              knowledge_point: KnowledgePoint,
-                              context: dict[str, Any]) -> list[AbilityTarget]:
+    def extract_ability_targets(
+        self, knowledge_point: KnowledgePoint, context: dict[str, Any]
+    ) -> list[AbilityTarget]:
         """Extract ability targets using rules"""
-        # Implementation would apply educational standards
+        error_msg = "Rule-based extraction strategy must implement extract_ability_targets method"
+        raise NotImplementedError(error_msg)
 
-    def extract_common_mistakes(self,
-                              knowledge_point: KnowledgePoint,
-                              context: dict[str, Any]) -> list[CommonMistake]:
+    def extract_common_mistakes(
+        self, knowledge_point: KnowledgePoint, context: dict[str, Any]
+    ) -> list[CommonMistake]:
         """Extract common mistakes using error pattern rules"""
-        # Implementation would use mistake pattern database
+        error_msg = "Rule-based extraction strategy must implement extract_common_mistakes method"
+        raise NotImplementedError(error_msg)
 
 
 class HybridExtractionStrategy(KnowledgeExtractionStrategy):
@@ -63,31 +76,44 @@ class HybridExtractionStrategy(KnowledgeExtractionStrategy):
     Uses both GLM models and rule-based approaches
     """
 
-    def __init__(self, ai_strategy: KnowledgeExtractionStrategy,
-                 rule_strategy: KnowledgeExtractionStrategy) -> None:
+    def __init__(
+        self,
+        ai_strategy: KnowledgeExtractionStrategy,
+        rule_strategy: KnowledgeExtractionStrategy,
+    ) -> None:
         self.ai_strategy = ai_strategy
         self.rule_strategy = rule_strategy
 
-    def extract_knowledge_points(self,
-                               document_sections: list[dict[str, Any]],
-                               textbook_id: uuid.UUID) -> list[KnowledgePoint]:
+    def extract_knowledge_points(
+        self, document_sections: list[dict[str, Any]], textbook_id: uuid.UUID
+    ) -> list[KnowledgePoint]:
         """Extract knowledge points using hybrid approach"""
-        # Combine AI and rule-based extraction
+        error_msg = (
+            "Hybrid extraction strategy must implement extract_knowledge_points method"
+        )
+        raise NotImplementedError(error_msg)
 
-    def extract_ability_targets(self,
-                              knowledge_point: KnowledgePoint,
-                              context: dict[str, Any]) -> list[AbilityTarget]:
+    def extract_ability_targets(
+        self, knowledge_point: KnowledgePoint, context: dict[str, Any]
+    ) -> list[AbilityTarget]:
         """Extract ability targets using hybrid approach"""
-        # Combine both strategies for better accuracy
+        error_msg = (
+            "Hybrid extraction strategy must implement extract_ability_targets method"
+        )
+        raise NotImplementedError(error_msg)
 
-    def extract_common_mistakes(self,
-                              knowledge_point: KnowledgePoint,
-                              context: dict[str, Any]) -> list[CommonMistake]:
+    def extract_common_mistakes(
+        self, knowledge_point: KnowledgePoint, context: dict[str, Any]
+    ) -> list[CommonMistake]:
         """Extract common mistakes using hybrid approach"""
-        # Use AI for pattern recognition and rules for validation
+        error_msg = (
+            "Hybrid extraction strategy must implement extract_common_mistakes method"
+        )
+        raise NotImplementedError(error_msg)
 
 
 # ============ Retrieval Strategies ============
+
 
 class SemanticRetrievalStrategy(RetrievalStrategy):
     """
@@ -95,25 +121,30 @@ class SemanticRetrievalStrategy(RetrievalStrategy):
     Focuses on meaning-based matching
     """
 
-    def retrieve_relevant_knowledge(self,
-                                  user_query: str,
-                                  textbook_id: uuid.UUID | None,
-                                  knowledge_point_ids: list[uuid.UUID] | None,
-                                  filters: dict[str, Any] | None) -> dict[str, Any]:
+    def retrieve_relevant_knowledge(
+        self,
+        user_query: str,
+        textbook_id: uuid.UUID | None,
+        knowledge_point_ids: list[uuid.UUID] | None,
+        filters: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         """Retrieve knowledge using semantic similarity"""
-        # Implementation would use vector embeddings
+        error_msg = "Semantic retrieval strategy must implement retrieve_relevant_knowledge method"
+        raise NotImplementedError(error_msg)
 
-    def calculate_relevance_scores(self,
-                                 query: str,
-                                 knowledge_items: list[Any]) -> dict[str, float]:
+    def calculate_relevance_scores(
+        self, query: str, knowledge_items: list[Any]
+    ) -> dict[str, float]:
         """Calculate relevance using semantic similarity"""
-        # Implementation would compute cosine similarity
+        error_msg = "Semantic retrieval strategy must implement calculate_relevance_scores method"
+        raise NotImplementedError(error_msg)
 
-    def rank_results(self,
-                   results: dict[str, Any],
-                   ranking_criteria: dict[str, Any]) -> dict[str, Any]:
+    def rank_results(
+        self, results: dict[str, Any], ranking_criteria: dict[str, Any]
+    ) -> dict[str, Any]:
         """Rank results based on semantic relevance"""
-        # Implementation would sort by similarity scores
+        error_msg = "Semantic retrieval strategy must implement rank_results method"
+        raise NotImplementedError(error_msg)
 
 
 class KeywordRetrievalStrategy(RetrievalStrategy):
@@ -122,25 +153,30 @@ class KeywordRetrievalStrategy(RetrievalStrategy):
     Focuses on exact keyword matching
     """
 
-    def retrieve_relevant_knowledge(self,
-                                  user_query: str,
-                                  textbook_id: uuid.UUID | None,
-                                  knowledge_point_ids: list[uuid.UUID] | None,
-                                  filters: dict[str, Any] | None) -> dict[str, Any]:
+    def retrieve_relevant_knowledge(
+        self,
+        user_query: str,
+        textbook_id: uuid.UUID | None,
+        knowledge_point_ids: list[uuid.UUID] | None,
+        filters: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         """Retrieve knowledge using keyword matching"""
-        # Implementation would use keyword search
+        error_msg = "Keyword retrieval strategy must implement retrieve_relevant_knowledge method"
+        raise NotImplementedError(error_msg)
 
-    def calculate_relevance_scores(self,
-                                 query: str,
-                                 knowledge_items: list[Any]) -> dict[str, float]:
+    def calculate_relevance_scores(
+        self, query: str, knowledge_items: list[Any]
+    ) -> dict[str, float]:
         """Calculate relevance using keyword frequency"""
-        # Implementation would count keyword matches
+        error_msg = "Keyword retrieval strategy must implement calculate_relevance_scores method"
+        raise NotImplementedError(error_msg)
 
-    def rank_results(self,
-                   results: dict[str, Any],
-                   ranking_criteria: dict[str, Any]) -> dict[str, Any]:
+    def rank_results(
+        self, results: dict[str, Any], ranking_criteria: dict[str, Any]
+    ) -> dict[str, Any]:
         """Rank results based on keyword matches"""
-        # Implementation would sort by match count
+        error_msg = "Keyword retrieval strategy must implement rank_results method"
+        raise NotImplementedError(error_msg)
 
 
 class HybridRetrievalStrategy(RetrievalStrategy):
@@ -149,30 +185,38 @@ class HybridRetrievalStrategy(RetrievalStrategy):
     Provides balanced retrieval results
     """
 
-    def __init__(self, semantic_strategy: RetrievalStrategy,
-                 keyword_strategy: RetrievalStrategy) -> None:
+    def __init__(
+        self, semantic_strategy: RetrievalStrategy, keyword_strategy: RetrievalStrategy
+    ) -> None:
         self.semantic_strategy = semantic_strategy
         self.keyword_strategy = keyword_strategy
 
-    def retrieve_relevant_knowledge(self,
-                                  user_query: str,
-                                  textbook_id: uuid.UUID | None,
-                                  knowledge_point_ids: list[uuid.UUID] | None,
-                                  filters: dict[str, Any] | None) -> dict[str, Any]:
+    def retrieve_relevant_knowledge(
+        self,
+        user_query: str,
+        textbook_id: uuid.UUID | None,
+        knowledge_point_ids: list[uuid.UUID] | None,
+        filters: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         """Retrieve knowledge using hybrid approach"""
-        # Combine semantic and keyword retrieval
+        error_msg = "Hybrid retrieval strategy must implement retrieve_relevant_knowledge method"
+        raise NotImplementedError(error_msg)
 
-    def calculate_relevance_scores(self,
-                                 query: str,
-                                 knowledge_items: list[Any]) -> dict[str, float]:
+    def calculate_relevance_scores(
+        self, query: str, knowledge_items: list[Any]
+    ) -> dict[str, float]:
         """Calculate relevance using combined approach"""
-        # Weighted combination of both strategies
+        error_msg = (
+            "Hybrid retrieval strategy must implement calculate_relevance_scores method"
+        )
+        raise NotImplementedError(error_msg)
 
-    def rank_results(self,
-                   results: dict[str, Any],
-                   ranking_criteria: dict[str, Any]) -> dict[str, Any]:
+    def rank_results(
+        self, results: dict[str, Any], ranking_criteria: dict[str, Any]
+    ) -> dict[str, Any]:
         """Rank results using hybrid ranking"""
-        # Combined ranking algorithm
+        error_msg = "Hybrid retrieval strategy must implement rank_results method"
+        raise NotImplementedError(error_msg)
 
 
 class EducationalRetrievalStrategy(RetrievalStrategy):
@@ -181,58 +225,70 @@ class EducationalRetrievalStrategy(RetrievalStrategy):
     Considers educational context and learning objectives
     """
 
-    def retrieve_relevant_knowledge(self,
-                                  user_query: str,
-                                  textbook_id: uuid.UUID | None,
-                                  knowledge_point_ids: list[uuid.UUID] | None,
-                                  filters: dict[str, Any] | None) -> dict[str, Any]:
+    def retrieve_relevant_knowledge(
+        self,
+        user_query: str,
+        textbook_id: uuid.UUID | None,
+        knowledge_point_ids: list[uuid.UUID] | None,
+        filters: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         """Retrieve knowledge with educational context"""
-        # Implementation would consider learning objectives
+        error_msg = "Educational retrieval strategy must implement retrieve_relevant_knowledge method"
+        raise NotImplementedError(error_msg)
 
-    def calculate_relevance_scores(self,
-                                 query: str,
-                                 knowledge_items: list[Any]) -> dict[str, float]:
+    def calculate_relevance_scores(
+        self, query: str, knowledge_items: list[Any]
+    ) -> dict[str, float]:
         """Calculate relevance with educational factors"""
-        # Implementation would include educational metrics
+        error_msg = "Educational retrieval strategy must implement calculate_relevance_scores method"
+        raise NotImplementedError(error_msg)
 
-    def rank_results(self,
-                   results: dict[str, Any],
-                   ranking_criteria: dict[str, Any]) -> dict[str, Any]:
+    def rank_results(
+        self, results: dict[str, Any], ranking_criteria: dict[str, Any]
+    ) -> dict[str, Any]:
         """Rank results based on educational value"""
-        # Implementation would prioritize educational relevance
+        error_msg = "Educational retrieval strategy must implement rank_results method"
+        raise NotImplementedError(error_msg)
 
 
 # ============ Strategy Factory ============
+
 
 class StrategyFactory:
     """Factory for creating retrieval strategies"""
 
     @staticmethod
-    def create_extraction_strategy(strategy_type: str, **kwargs: Any) -> KnowledgeExtractionStrategy:
+    def create_extraction_strategy(
+        strategy_type: str,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> KnowledgeExtractionStrategy:
         """Create knowledge extraction strategy"""
+        _ = kwargs  # Avoid unused variable warning
         if strategy_type == "glm":
             return GLMExtractionStrategy()
         if strategy_type == "rule_based":
             return RuleBasedExtractionStrategy()
         if strategy_type == "hybrid":
             return HybridExtractionStrategy(
-                GLMExtractionStrategy(),
-                RuleBasedExtractionStrategy()
+                GLMExtractionStrategy(), RuleBasedExtractionStrategy()
             )
         msg = f"Unknown extraction strategy: {strategy_type}"
         raise ValueError(msg)
 
     @staticmethod
-    def create_retrieval_strategy(strategy_type: str, **kwargs: Any) -> RetrievalStrategy:
+    def create_retrieval_strategy(
+        strategy_type: str,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> RetrievalStrategy:
         """Create knowledge retrieval strategy"""
+        _ = kwargs  # Avoid unused variable warning
         if strategy_type == "semantic":
             return SemanticRetrievalStrategy()
         if strategy_type == "keyword":
             return KeywordRetrievalStrategy()
         if strategy_type == "hybrid":
             return HybridRetrievalStrategy(
-                SemanticRetrievalStrategy(),
-                KeywordRetrievalStrategy()
+                SemanticRetrievalStrategy(), KeywordRetrievalStrategy()
             )
         if strategy_type == "educational":
             return EducationalRetrievalStrategy()

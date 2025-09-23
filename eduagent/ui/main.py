@@ -22,7 +22,7 @@ def main() -> None:
         page_title="EduAgent - Educational AI Platform",
         page_icon=defs.ui.PAGE_ICON,
         layout="centered",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="collapsed",
     )
 
     # Welcome page with role selection
@@ -44,7 +44,7 @@ def main() -> None:
         - Monitor student progress
         - Create practice exercises
         """)
-        if st.button("Enter as Teacher", width='stretch'):
+        if st.button("Enter as Teacher", width="stretch"):
             st.session_state.role = "teacher"
             st.rerun()
 
@@ -56,7 +56,7 @@ def main() -> None:
         - Get personalized feedback
         - Ask questions to AI tutor
         """)
-        if st.button("Enter as Student", width='stretch'):
+        if st.button("Enter as Student", width="stretch"):
             st.session_state.role = "student"
             st.rerun()
 
