@@ -1,6 +1,6 @@
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,9 +22,6 @@ from .models import (
     User,
     UserRole,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class ModelWithId(Protocol):
