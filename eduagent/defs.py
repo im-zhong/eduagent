@@ -3,6 +3,7 @@
 
 
 from pathlib import Path
+from typing import ClassVar
 
 
 class Pathes:
@@ -27,10 +28,131 @@ class Pathes:
         return Path("example.eduagent.toml")
 
 
+class APIDefs:
+    """API endpoint definitions for EduAgent system"""
+
+    # Base API path
+    BASE_PATH = "/api/v1"
+
+    # Knowledge Extraction Endpoints
+    TEXTBOOK_UPLOAD = f"{BASE_PATH}/textbook/upload"
+    EXTRACTION_STATUS = f"{BASE_PATH}/knowledge/extraction/{{extraction_id}}"
+    KNOWLEDGE_GRAPH = f"{BASE_PATH}/knowledge/graph/{{textbook_id}}"
+
+    # Question Generation Endpoints
+    GENERATE_QUESTIONS = f"{BASE_PATH}/questions/generate"
+    CONTROL_DIFFICULTY = f"{BASE_PATH}/questions/difficulty/control"
+    GENERATE_DISTRACTORS = f"{BASE_PATH}/questions/distractors/generate"
+
+    # Assessment & Feedback Endpoints
+    EVALUATE_ANSWERS = f"{BASE_PATH}/assessment/evaluate"
+    PROVIDE_FEEDBACK = f"{BASE_PATH}/feedback/provide"
+
+    # User Management Endpoints
+    USER_REGISTER = f"{BASE_PATH}/users/register"
+    USER_LOGIN = f"{BASE_PATH}/users/login"
+    USER_PROFILE = f"{BASE_PATH}/users/{{user_id}}"
+
+    # Exercise & Practice Endpoints
+    CREATE_EXERCISE = f"{BASE_PATH}/exercises"
+    GET_EXERCISE = f"{BASE_PATH}/exercises/{{exercise_id}}"
+    START_PRACTICE = f"{BASE_PATH}/practice/session"
+
+    # Analytics Endpoints
+    PERFORMANCE_ANALYTICS = f"{BASE_PATH}/analytics/performance"
+    MISTAKE_ANALYSIS = f"{BASE_PATH}/analytics/mistakes"
+    CLASS_ANALYTICS = f"{BASE_PATH}/analytics/class/{{class_id}}"
+
+    # System Endpoints
+    HEALTH_CHECK = f"{BASE_PATH}/health"
+    BATCH_GENERATE_QUESTIONS = f"{BASE_PATH}/batch/questions/generate"
+
+
+class UIDefs:
+    """UI-related constants and definitions"""
+
+    # Page titles and icons
+    TEACHER_DASHBOARD_TITLE = "EduAgent - Teacher Dashboard"
+    STUDENT_DASHBOARD_TITLE = "EduAgent - Student Dashboard"
+    PAGE_ICON = "📚"
+
+    # Navigation options
+    TEACHER_NAV_OPTIONS: ClassVar[list[str]] = [
+        "🏠 Dashboard",
+        "📖 Textbook Management",
+        "❓ Question Generation",
+        "📊 Analytics & Reports",
+        "👥 Class Management",
+        "⚙️ Settings",
+    ]
+
+    STUDENT_NAV_OPTIONS: ClassVar[list[str]] = [
+        "🏠 Dashboard",
+        "📚 Practice Exercises",
+        "📈 Progress Tracking",
+        "❓ Ask Questions",
+        "⚙️ Settings",
+    ]
+
+    # Subject options
+    SUBJECTS: ClassVar[list[str]] = [
+        "Math",
+        "Science",
+        "History",
+        "Language",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Science",
+    ]
+
+    # Grade levels
+    GRADE_LEVELS: ClassVar[list[str]] = [
+        "Elementary",
+        "Middle School",
+        "High School",
+        "College",
+    ]
+
+    # Question types
+    QUESTION_TYPES: ClassVar[list[str]] = [
+        "Multiple Choice",
+        "True/False",
+        "Short Answer",
+        "Essay",
+        "Calculation",
+        "Fill in Blank",
+    ]
+
+    # Difficulty levels
+    DIFFICULTY_LEVELS: ClassVar[list[str]] = ["Easy", "Medium", "Hard"]
+
+    # Cognitive levels
+    COGNITIVE_LEVELS: ClassVar[list[str]] = [
+        "Memory",
+        "Understanding",
+        "Application",
+        "Analysis",
+        "Evaluation",
+        "Creation",
+    ]
+
+    # Time periods for analytics
+    TIME_PERIODS: ClassVar[list[str]] = ["7 days", "30 days", "90 days", "All time"]
+
+
 class Defs:
     @property
     def pathes(self) -> Pathes:
         return Pathes()
+
+    @property
+    def api(self) -> APIDefs:
+        return APIDefs()
+
+    @property
+    def ui(self) -> UIDefs:
+        return UIDefs()
 
 
 def new_defs() -> Defs:

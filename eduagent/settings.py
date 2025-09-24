@@ -29,7 +29,7 @@ class DatabaseConfig(BaseModel):
 
     @property
     def sqlalchemy_url(self) -> str:
-        return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
+        return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
     @property
     def db_dict(self) -> dict[str, Any]:

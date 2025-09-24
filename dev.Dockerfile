@@ -33,6 +33,22 @@ ENV PATH="/home/${USER}/.local/bin:${PATH}"
 # 设置 uv 默认使用 copy 模式
 ENV UV_LINK_MODE=copy
 
+# nodejs in the debian system package is too old, so we use nvm to install it
+
+# install nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+
+# set env
+ENV NVM_DIR=/home/${USER}/.nvm
+
+# install node
+RUN bash -c "source $NVM_DIR/nvm.sh && nvm install 22"
+# install claude code: npm install -g @anthropic-ai/claude-code
+RUN bash -c "source $NVM_DIR/nvm.sh && nvm use 22 && npm install -g @anthropic-ai/claude-code"
+
+# set claude code envs
+# set CLAUDE_API_KEY env, by the envs in the .env file
+
 # The WORKDIR instruction sets the working directory for any RUN, CMD, ENTRYPOINT, COPY and ADD instructions that follow it in the Dockerfile.
 WORKDIR /home/${USER}/eduagent
 
