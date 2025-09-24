@@ -178,3 +178,7 @@ etc/
 data/
 logs/
 eduagent.toml
+
+# claude configuration files
+.claude/
+.claude.json

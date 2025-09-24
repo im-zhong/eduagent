@@ -14,6 +14,11 @@ services:
       args:
         UID: ${USER_UID}
         USER: ${USER}
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
+      - ANTHROPIC_SMALL_FAST_MODEL=${ANTHROPIC_SMALL_FAST_MODEL}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent:${USER}
     command: ["dev"]
@@ -27,6 +32,9 @@ services:
       - ~/.ssh:/home/${USER}/.ssh:ro
       # use local cache, so that we do not install pre commit every time after we rebuild continaer
       - ~/.cache:/home/${USER}/.cache
+      # mapping the claude conf file, so we do not need to login again and again
+      - ./.claude:/home/${USER}/.claude
+      - ./.claude.json:/home/${USER}/.claude.json
     networks:
       eduagent-network:
     depends_on:
