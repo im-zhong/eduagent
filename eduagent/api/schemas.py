@@ -221,7 +221,7 @@ class UserResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str
+    email: str
     password: str
 
 
@@ -229,6 +229,18 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+    confirm_new_password: str
+
+
+class UserUpdateRequest(BaseModel):
+    username: str | None = Field(None, min_length=3, max_length=50)
+    grade_level: int | None = Field(None, ge=1, le=12)
+    subject_interests: list[str] | None = None
 
 
 # ============ Exercise & Practice Schemas ============

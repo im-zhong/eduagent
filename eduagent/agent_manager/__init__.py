@@ -5,7 +5,6 @@ Provides comprehensive agent orchestration, management, and coordination
 functionality for educational AI agents.
 """
 
-from .agent_manager import AgentManager, EducationalAgentManager
 from .agent_types import (
     AgentCapability,
     AgentError,
@@ -25,13 +24,11 @@ __all__ = [
     "AgentCapability",
     "AgentError",
     "AgentInfo",
-    "AgentManager",
     "AgentPerformanceMetrics",
     "AgentRegistration",
     "AgentRequest",
     "AgentResponse",
     "AgentStatus",
-    "EducationalAgentManager",
     "RequestLog",
     "SystemStatus",
     "ToolInfo",
