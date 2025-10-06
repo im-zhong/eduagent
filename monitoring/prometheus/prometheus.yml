@@ -1,0 +1,37 @@
+# Prometheus 配置文件
+# 监控 Docker 容器和应用程序指标
+
+global:
+  scrape_interval: 15s  # 每 15 秒抓取一次指标
+  evaluation_interval: 15s  # 每 15 秒评估一次规则
+  external_labels:
+    monitor: 'eduagent-monitor'
+
+# 抓取配置
+scrape_configs:
+  # Prometheus 自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # cAdvisor - 容器指标
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'eduagent'
+
+  # Node Exporter - 主机系统指标
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # 如果你的应用程序暴露了 /metrics 端点，可以添加以下配置
+  # - job_name: 'eduagent-api'
+  #   static_configs:
+  #     - targets: ['eduagent-api:8000']
+  #   metrics_path: '/metrics'
+
+

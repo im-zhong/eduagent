@@ -18,7 +18,7 @@ install_deps() {
     uv sync --dev
 }
 
-# 在这里安装合适
+# 在这里安装合�?
 install_precommit() {
     if command -v uv &>/dev/null; then
         echo "🔗 使用 uv 安装 pre-commit hooks..."
@@ -27,12 +27,12 @@ install_precommit() {
         echo "🔗 使用系统 pre-commit 安装 hooks..."
         pre-commit install
     else
-        echo "❌ pre-commit 未安装，请先运行: uv pip install pre-commit"
+        echo "�?pre-commit 未安装，请先运行: uv pip install pre-commit"
         exit 1
     fi
 }
 
-# 参数检查
+# 参数检�?
 if [ $# -eq 0 ]; then
     echo "Error: No command specified"
     echo
@@ -44,7 +44,7 @@ fi
 case "$1" in
     api)
         echo "Starting FastAPI..."
-        # TODO(zhangzhong): 在这个位置做 pre commit install 比较合适
+        # TODO(zhangzhong): 在这个位置做 pre commit install 比较合�?
         install_deps
 
         # exec poetry run python -m twitter_service.server.api.api

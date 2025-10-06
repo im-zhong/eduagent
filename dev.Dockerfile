@@ -36,6 +36,10 @@ ENV UV_LINK_MODE=copy
 # The WORKDIR instruction sets the working directory for any RUN, CMD, ENTRYPOINT, COPY and ADD instructions that follow it in the Dockerfile.
 WORKDIR /home/${USER}/eduagent
 
+# 复制 entrypoint.sh 到容器中
+COPY --chown=${USER}:${USER} entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 # An ENTRYPOINT allows you to configure a container that will run as an executable.
 # 必须启动一个进程，否则容器启动就会立刻退出
 ENTRYPOINT ["./entrypoint.sh"]

@@ -1,0 +1,47 @@
+# 自动规范化行结束符
+* text=auto
+
+# Shell 脚本必须使用 LF（Unix 风格）
+*.sh text eol=lf
+
+# Python 文件使用 LF
+*.py text eol=lf
+
+# YAML 配置文件使用 LF
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Dockerfile 使用 LF
+Dockerfile* text eol=lf
+*.Dockerfile text eol=lf
+
+# Markdown 文档可以使用本地行结束符
+*.md text
+
+# 二进制文件不转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.flv binary
+*.fla binary
+*.swf binary
+*.gz binary
+*.zip binary
+*.7z binary
+*.ttf binary
+*.eot binary
+*.woff binary
+*.pyc binary
+*.pdf binary
+*.ez binary
+*.bz2 binary
+*.swp binary
+*.db binary
+*.sqlite binary
+
+
