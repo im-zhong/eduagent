@@ -11,6 +11,12 @@ from pydantic import BaseModel, Field
 from eduagent.defs import defs
 
 
+class RedisConfig(BaseModel):  # 新增 Redis 配置模型
+    host: str = "eduagent-redis"
+    port: int = 6379
+    db: int = 0
+
+
 class ProjectConfig(BaseModel):
     api_version: str = "v1"
 
@@ -42,6 +48,10 @@ class DatabaseConfig(BaseModel):
         }
 
 
+class ApiConfig(BaseModel):  # << 1. 新增这个类
+    secret_key: str = "your_default_secret_key"  # 默认密钥，不应在生产中使用
+
+
 # 总 Settings
 # ------------------------
 class Settings(BaseModel):
@@ -49,6 +59,8 @@ class Settings(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
 
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    api: ApiConfig = Field(default_factory=ApiConfig)
 
 
 # ------------------------

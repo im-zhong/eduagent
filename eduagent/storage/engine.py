@@ -1,5 +1,15 @@
+from collections.abc import AsyncGenerator
+
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
+from eduagent.settings import DatabaseConfig, settings
 
 
 class PGSQLSettings(BaseModel):
@@ -13,10 +23,31 @@ class PGSQLSettings(BaseModel):
         return f"postgresql+psycopg://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
 
 
-# https://docs.sqlalchemy.org/en/20/tutorial/engine.html#tutorial-engine
-# This object acts as a central source of connections to a particular database,
-# providing both a factory as well as a holding space called a connection pool for these database connections.
-#  The engine is typically a global object created just once for a particular database server,
-# and is configured using a URL string which will describe how it should connect to the database host or backend.
 def create_pgsql_engine(pgsql_settings: PGSQLSettings) -> Engine:
     return create_engine(pgsql_settings.get_pgsql_url(), echo=True)
+
+
+# ==============================================================================
+# 异步引擎和会话，供 fastapi-users 使用
+# ==============================================================================
+
+
+def create_async_pgsql_engine(db_settings: DatabaseConfig) -> AsyncEngine:
+    """创建异步 PostgreSQL 引擎"""
+    async_url = db_settings.sqlalchemy_url.replace(
+        "postgresql+psycopg", "postgresql+asyncpg"
+    )
+    return create_async_engine(async_url)
+
+
+async_engine = create_async_pgsql_engine(settings.database)
+
+# 创建一个异步 sessionmaker 工厂
+async_session_maker = async_sessionmaker(
+    bind=async_engine, class_=AsyncSession, expire_on_commit=False
+)
+
+
+async def get_async_session() -> AsyncGenerator[AsyncSession]:
+    async with async_session_maker() as session:
+        yield session

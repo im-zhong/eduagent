@@ -6,7 +6,10 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi>=0.116.1",
-    "fastapi-users[sqlalchemy]>=14.0.1",
+    "fastapi-users[sqlalchemy,redis]>=14.0.1",
+    "SQLAlchemy-Utils>=0.41.1",
+    "asyncpg>=0.29.0",
+    "PyJWT>=2.8.0",
     "httpx>=0.28.1",
     "langchain>=0.3.27",
     "loguru>=0.7.3",
@@ -54,6 +57,7 @@ ignore = [
     "G",
     "TC",
     "RUF001", # https://docs.astral.sh/ruff/rules/ambiguous-unicode-character-string/
+    "B008",
 ]
 
 
@@ -90,3 +94,12 @@ exclude = [
 # unknownParameterType = "warning"  # 改为 warning，避免第三方库参数类型问题
 # unknownArgumentType = "warning"    # 改为 warning，避免第三方库参数类型问题
 # reportUnknownMemberType = "none"         # 完全禁用第三方库成员类型检查
+
+[tool.setuptools]
+packages = ["eduagent"]
+
+[tool.ruff.lint.per-file-ignores]
+# 忽略 lifespan 函数中未使用的 "app" 参数
+"eduagent/api/api.py" = ["ARG001"]
+# 忽略 manager.py 中 fastapi-users 定义的方法里未使用的 "request" 参数
+"eduagent/user/manager.py" = ["ARG002"]
