@@ -67,13 +67,13 @@ fi
 ##############################################
 # 4. 检查 SSH 公钥
 ##############################################
-if [ ! -f "$HOME/.ssh/id_rsa.pub" ] && [ ! -f "$HOME/.ssh/id_ed25519.pub" ]; then
-    echo "❌ 没有找到 ssh 公钥 (~/.ssh/id_rsa.pub 或 id_ed25519.pub)"
-    echo "   👉 请运行: ssh-keygen -t ed25519 -C \"you@example.com\""
-    exit 1
-else
-    echo "✅ 已检测到 ssh 公钥"
-fi
+# if [ ! -f "$HOME/.ssh/id_rsa.pub" ] && [ ! -f "$HOME/.ssh/id_ed25519.pub" ]; then
+#     echo "❌ 没有找到 ssh 公钥 (~/.ssh/id_rsa.pub 或 id_ed25519.pub)"
+#     echo "   👉 请运行: ssh-keygen -t ed25519 -C \"you@example.com\""
+#     exit 1
+# else
+#     echo "✅ 已检测到 ssh 公钥"
+# fi
 
 ##############################################
 # 5. 检查 SSH 连接 GitHub
