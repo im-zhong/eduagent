@@ -48,7 +48,8 @@ services:
     networks:
       - eduagent-network
     depends_on:
-      - eduagent-dev
+      - eduagent-db
+      - eduagent-redis
 
   eduagent-ui:
     image: eduagent:${USER}
