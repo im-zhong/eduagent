@@ -1,25 +1,18 @@
+# Main API application
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# --- 新增的导入 ---
 from eduagent.storage.engine import async_engine
 from eduagent.user.models import Base
 
 # --------------------
-from .endpoints import (
-    analytics_router,
-    assessment_router,
-    exercises_router,
-    knowledge_router,
-    questions_router,
-    users_router,  # 1. 导入新的 users_router
-)
+from .endpoints import api_routers
 
 
-# 2. 新增 lifespan 函数用于应用启动时创建数据库表
+# 2. 保留你的 lifespan 函数，用于应用启动时创建数据库表
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
@@ -38,10 +31,10 @@ api = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan,  # 3. 将 lifespan 应用到 FastAPI 实例
+    lifespan=lifespan,  # 3. 应用你的 lifespan
 )
 
-# ... [CORS 中间件部分保持不变] ...
+# Configure CORS (与主分支保持一致)
 api.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -50,17 +43,13 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Include all API routers
-api.include_router(analytics_router, prefix="/api/v1", tags=["AI Education Services"])
-api.include_router(assessment_router, prefix="/api/v1", tags=["AI Education Services"])
-api.include_router(exercises_router, prefix="/api/v1", tags=["AI Education Services"])
-api.include_router(knowledge_router, prefix="/api/v1", tags=["AI Education Services"])
-api.include_router(questions_router, prefix="/api/v1", tags=["AI Education Services"])
-api.include_router(users_router, prefix="/api/v1")  # 4. 注册新的用户路由
+# 4. 采用主分支的循环方式注册所有 API 路由
+for router in api_routers:
+    # 你的 users_router 应该有自己的 tags，这里统一为 "AI Education Services"
+    # 如果需要为 users_router 设置不同的 tag, 你需要在 endpoints/users.py 中定义好
+    api.include_router(router, prefix="/api/v1", tags=["AI Education Services"])
 
 
-# ... [root 和 health_check 路由保持不变] ...
 @api.get("/", include_in_schema=False)
 async def root() -> dict[str, str]:
     return {

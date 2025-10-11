@@ -80,7 +80,7 @@ services:
     networks:
       - eduagent-network
 
-  eduagent-redis: # <-- 确保这里的缩进和 eduagent-db 对齐
+  eduagent-redis:
     image: redis:7
     hostname: redis.eduagent
     restart: unless-stopped
