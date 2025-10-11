@@ -80,21 +80,11 @@ exclude = [
     "data",
 ]
 
-# 忽略特定第三方库的类型检查
-# ignore = [
-#     "**/streamlit/**",
-#     "**/plotly/**",
-# ]
-
 # 严格模式已经打开了大多数规则，这里只覆盖团队需要调整的
 [tool.pyright.report]
-# unusedImport = "none"      # 交给 Ruff 处理
-# unusedVariable = "none"    # 交给 Ruff 处理
-# missingTypeStubs = "none" # 完全禁用缺失类型存根检查
-# unknownParameterType = "warning"  # 改为 warning，避免第三方库参数类型问题
-# unknownArgumentType = "warning"    # 改为 warning，避免第三方库参数类型问题
-# reportUnknownMemberType = "none"         # 完全禁用第三方库成员类型检查
+# reportUnknownMemberType = "none"        # 完全禁用第三方库成员类型检查
 
+# 3. 保留你新增的配置项
 [tool.setuptools]
 packages = ["eduagent"]
 
