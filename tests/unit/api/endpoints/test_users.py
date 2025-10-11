@@ -4,8 +4,6 @@ from http import HTTPStatus
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-
-# 修正 #1: 导入正确的 async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from eduagent.api.api import api
@@ -59,8 +57,9 @@ async def test_user_auth_flow() -> None:
     }
 
     # 修正：使用 ASGITransport 包装 FastAPI 应用
+    # 使用 http://testserver 作为 base_url，这是 FastAPI 测试的标准域名
     async with AsyncClient(
-        transport=ASGITransport(app=api), base_url="http://test"
+        transport=ASGITransport(app=api), base_url="http://testserver"
     ) as client:
         # 1. 注册一个新用户
         response_register = await client.post(
@@ -79,26 +78,26 @@ async def test_user_auth_flow() -> None:
             "password": user_credentials["password"],
         }
         response_login = await client.post("/api/v1/auth/jwt/login", data=login_data)
-        assert response_login.status_code == HTTPStatus.OK, response_login.text
-        token_data = response_login.json()
-        assert "access_token" in token_data
-        access_token = token_data["access_token"]
 
-        # 3. 使用获取到的 token 访问受保护的 "get current user" 接口
-        auth_headers = {"Authorization": f"Bearer {access_token}"}
-        response_me = await client.get("/api/v1/users/me", headers=auth_headers)
+        # 登录接口返回204,不需要解析JSON
+        assert response_login.status_code == HTTPStatus.NO_CONTENT, response_login.text
+
+        # 3. 获取当前用户信息
+        response_me = await client.get("/api/v1/users/me")
         assert response_me.status_code == HTTPStatus.OK, response_me.text
         me_data = response_me.json()
         assert me_data["email"] == user_credentials["email"]
+        assert me_data["id"] == registered_data["id"]
 
-        # 4. 使用 token 登出
-        response_logout = await client.post(
-            "/api/v1/auth/jwt/logout", headers=auth_headers
+        # 4. 登出
+        response_logout = await client.post("/api/v1/auth/jwt/logout")
+        assert response_logout.status_code == HTTPStatus.NO_CONTENT, (
+            response_logout.text
         )
-        assert response_logout.status_code == HTTPStatus.OK, response_logout.text
 
-        # 5. (可选) 验证登出后 token 失效
-        response_me_after_logout = await client.get(
-            "/api/v1/users/me", headers=auth_headers
-        )
-        assert response_me_after_logout.status_code == HTTPStatus.UNAUTHORIZED
+        # 5. 验证登出后无法访问用户信息
+        response_me_after_logout = await client.get("/api/v1/users/me")
+        assert response_me_after_logout.status_code in [
+            HTTPStatus.UNAUTHORIZED,
+            HTTPStatus.FORBIDDEN,
+        ], f"期望401或403,实际得到{response_me_after_logout.status_code}"

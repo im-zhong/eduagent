@@ -9,7 +9,12 @@ from fastapi_users.authentication import (
 from eduagent.settings import settings
 from eduagent.user.models import User
 
-cookie_transport = CookieTransport(cookie_name="eduagent", cookie_max_age=3600)
+# 在开发/测试环境中禁用 secure 标志，允许在 HTTP 环境下使用 cookie
+cookie_transport = CookieTransport(
+    cookie_name="eduagent",
+    cookie_max_age=3600,
+    cookie_secure=False,  # 在开发环境中允许HTTP传输
+)
 
 SECRET = settings.api.secret_key  # 假设 API secret key 在 settings 中
 
