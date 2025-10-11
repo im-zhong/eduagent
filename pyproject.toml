@@ -42,54 +42,27 @@ asyncio_mode = "auto"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "D",
-    "ERA",
-    "PGH",
-    "RUF003",
-    "E501",
-    "COM",
-    "FA102",
-    "T20",
-    "TD",
-    "FIX",
-    "BLE",
-    "S",
-    "G",
-    "TC",
-    "RUF001", # https://docs.astral.sh/ruff/rules/ambiguous-unicode-character-string/
-    "B008",
+    "D", "ERA", "PGH", "RUF003", "E501", "COM", "FA102", "T20", "TD", "FIX",
+    "BLE", "S", "G", "TC", "RUF001", "B008",
 ]
 
 
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
-
-# 虚拟环境配置
 venvPath = "."
 venv = ".venv"
-
-# 项目路径
 include = ["eduagent", "tests"]
 exclude = [
-    "**/node_modules",
-    "**/__pycache__",
-    ".venv",
-    "build",
-    "dist",
-    "data",
+    "**/node_modules", "**/__pycache__", ".venv", "build", "dist", "data",
 ]
 
-# 严格模式已经打开了大多数规则，这里只覆盖团队需要调整的
 [tool.pyright.report]
-# reportUnknownMemberType = "none"        # 完全禁用第三方库成员类型检查
+# reportUnknownMemberType = "none"
 
-# 3. 保留你新增的配置项
 [tool.setuptools]
 packages = ["eduagent"]
 
 [tool.ruff.lint.per-file-ignores]
-# 忽略 lifespan 函数中未使用的 "app" 参数
 "eduagent/api/api.py" = ["ARG001"]
-# 忽略 manager.py 中 fastapi-users 定义的方法里未使用的 "request" 参数
 "eduagent/user/manager.py" = ["ARG002"]
