@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: prod.Dockerfile
       args:
-        UID: ${UID}
+        UID: ${USER_UID}
         USER: ${USER}
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent-prod

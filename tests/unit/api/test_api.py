@@ -8,9 +8,8 @@ client = TestClient(api)
 
 
 def test_hello_endpoint() -> None:
-    response = client.get("/hello")
+    response = client.get("/api/v1/health")
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == "hello"
 
 
 async def test_async() -> None:

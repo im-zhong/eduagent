@@ -178,3 +178,7 @@ etc/
 data/  # 包括数据库数据和监控数据 (postgres, prometheus, grafana)
 logs/
 eduagent.toml
+
+# claude configuration files
+.claude/
+.claude.json
