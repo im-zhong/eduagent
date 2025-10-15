@@ -2,5 +2,5 @@
 api_version = "v1"
 
 [llm]
-api_key = "NOKEY"
+api_key = "201dda3d7431484980e455d92e551644.q8DhEMdchw35XSnE"
 api_base = "https://api.deepseek.com"
