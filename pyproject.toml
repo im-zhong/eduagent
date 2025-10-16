@@ -39,6 +39,9 @@ dev = [
 [tool.pytest.ini_options]
 norecursedirs = ["data", ".git", ".venv", "dist", "build", "node_modules"]
 asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (requires external services)",
+]
 
 [tool.ruff.lint]
 select = ["ALL"]
