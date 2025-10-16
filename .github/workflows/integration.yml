@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Build Docker image
         run: |
@@ -25,13 +25,27 @@ jobs:
       - name: Deploy FastAPI
         run: docker compose -f prod.docker-compose.yaml up -d
 
-      - name: Wait for services to be ready
+      - name: Wait for PostgreSQL to be ready
         run: |
-          echo "Waiting for FastAPI to start..."
-          sleep 10  # Or use curl in a loop to check http://localhost:8000/hello
-
+          echo "Waiting for PostgreSQL to start..."
+          # 循环执行 10 次，每次间隔 5 秒
+          for i in {1..10}; do
+            # 进入 eduagent-db 容器，执行 pg_isready 命令
+            # -U postgres 是指定数据库用户，请根据你的 prod.docker-compose.yaml 进行调整
+            if docker compose -f prod.docker-compose.yaml exec -T eduagent-db pg_isready -U postgres; then
+              echo "PostgreSQL is ready!"
+              exit 0
+            fi
+            echo "PostgreSQL not ready yet, waiting..."
+            sleep 5
+          done
+          echo "PostgreSQL did not become ready in time."
+          exit 1
+      # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
       - name: Run integration tests
-        run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest tests/integration -v
+        run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest tests/integration tests/unit
 
       - name: Tear down
+        # 使用 --if-present 确保即使前面的步骤失败，清理步骤也能尝试运行
+        if: always()
         run: docker compose -f prod.docker-compose.yaml down
