@@ -6,10 +6,10 @@ EduAgent 监控模块
 快速开始:
     1. 启动监控服务:
         docker-compose -f dev.docker-compose.yaml up -d
-    
+
     2. 访问 Grafana 仪表板:
         http://localhost:3000 (admin/admin)
-    
+
     3. 查看文档:
         eduagent/monitor/README.md
 
