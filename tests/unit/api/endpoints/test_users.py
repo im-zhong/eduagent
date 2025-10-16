@@ -10,54 +10,59 @@ from eduagent.api.api import api
 from eduagent.storage.engine import get_async_session
 from eduagent.user.models import Base
 
-# 创建一个专门用于测试的、在内存中运行的 SQLite 数据库
+# --- 配置 SQLite 内存数据库用于快速单元测试 ---
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-async_engine = create_async_engine(TEST_DATABASE_URL)
-
-async_session_maker = async_sessionmaker(
-    bind=async_engine, class_=AsyncSession, expire_on_commit=False
+unit_test_engine = create_async_engine(TEST_DATABASE_URL)
+unit_test_session_maker = async_sessionmaker(
+    bind=unit_test_engine, class_=AsyncSession, expire_on_commit=False
 )
 
 
-# 创建一个新的依赖函数, 它将替换掉应用中原来的 `get_async_session`
 async def override_get_async_session() -> AsyncGenerator[AsyncSession]:
     """
-    FastAPI 依赖项覆盖: 为测试提供一个独立的内存数据库会话。
+    FastAPI 依赖项覆盖: 为单元测试提供一个独立的内存数据库会话。
     """
-    async with async_session_maker() as session:
+    async with unit_test_session_maker() as session:
         yield session
 
 
-# 使用 pytest fixture 来管理测试的准备和清理工作
 @pytest_asyncio.fixture(scope="function", autouse=True)
-async def db_session() -> AsyncGenerator[None]:
+async def db_session(request: pytest.FixtureRequest) -> AsyncGenerator[None]:
     """
-    Pytest Fixture: 在每个测试函数运行前, 创建所有数据库表;
+    Pytest Fixture: 在每个单元测试函数运行前, 创建所有数据库表;
     运行结束后, 删除所有表, 确保每个测试都是在干净的环境中运行。
     """
-    api.dependency_overrides[get_async_session] = override_get_async_session
+    # 仅对非 integration 标记的测试应用依赖覆盖
+    # 这样集成测试就可以使用真实的数据库连接
+    has_integration_marker = bool(
+        request.node.get_closest_marker("integration")  # type: ignore[union-attr]
+    )
 
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if not has_integration_marker:
+        api.dependency_overrides[get_async_session] = override_get_async_session
+        async with unit_test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
     yield  # 在这里运行测试函数
 
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    if not has_integration_marker:
+        async with unit_test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        # 清理依赖覆盖，避免影响其他测试
+        api.dependency_overrides.clear()
 
 
+# --- 单元测试 (使用 SQLite) ---
 @pytest.mark.asyncio
 async def test_user_auth_flow() -> None:
     """
-    测试用户认证的全流程: 注册, 登录, 获取信息, 登出。
+    测试用户认证的全流程 (使用 SQLite): 注册, 登录, 获取信息, 登出。
     """
     user_credentials = {
         "email": "test-flow@example.com",
         "password": "testpassword123",
     }
 
-    # 修正：使用 ASGITransport 包装 FastAPI 应用
-    # 使用 http://testserver 作为 base_url，这是 FastAPI 测试的标准域名
     async with AsyncClient(
         transport=ASGITransport(app=api), base_url="http://testserver"
     ) as client:
@@ -78,8 +83,6 @@ async def test_user_auth_flow() -> None:
             "password": user_credentials["password"],
         }
         response_login = await client.post("/api/v1/auth/jwt/login", data=login_data)
-
-        # 登录接口返回204,不需要解析JSON
         assert response_login.status_code == HTTPStatus.NO_CONTENT, response_login.text
 
         # 3. 获取当前用户信息
@@ -97,7 +100,57 @@ async def test_user_auth_flow() -> None:
 
         # 5. 验证登出后无法访问用户信息
         response_me_after_logout = await client.get("/api/v1/users/me")
-        assert response_me_after_logout.status_code in [
-            HTTPStatus.UNAUTHORIZED,
-            HTTPStatus.FORBIDDEN,
-        ], f"期望401或403,实际得到{response_me_after_logout.status_code}"
+        assert response_me_after_logout.status_code == HTTPStatus.UNAUTHORIZED
+
+
+# --- 集成测试 (使用 PostgreSQL) ---
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_user_auth_flow_postgres() -> None:
+    """
+    测试用户认证的全流程 (使用 PostgreSQL): 注册, 登录, 获取信息, 登出。
+    """
+    # 这个测试会使用默认的 get_async_session,
+    # 它连接到 .env 文件中配置的 PostgreSQL 数据库。
+    # 在运行前请确保 PostgreSQL 服务正在运行。
+    user_credentials = {
+        "email": "test-flow-pg@example.com",
+        "password": "testpassword123",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=api), base_url="http://testserver"
+    ) as client:
+        # 1. 注册
+        response_register = await client.post(
+            "/api/v1/auth/register", json=user_credentials
+        )
+        assert response_register.status_code == HTTPStatus.CREATED, (
+            response_register.text
+        )
+        registered_data = response_register.json()
+
+        # 2. 登录
+        login_data = {
+            "username": user_credentials["email"],
+            "password": user_credentials["password"],
+        }
+        response_login = await client.post("/api/v1/auth/jwt/login", data=login_data)
+        assert response_login.status_code == HTTPStatus.NO_CONTENT, response_login.text
+
+        # 3. 获取用户信息
+        response_me = await client.get("/api/v1/users/me")
+        assert response_me.status_code == HTTPStatus.OK, response_me.text
+        me_data = response_me.json()
+        assert me_data["email"] == user_credentials["email"]
+        assert me_data["id"] == registered_data["id"]
+
+        # 4. 登出
+        response_logout = await client.post("/api/v1/auth/jwt/logout")
+        assert response_logout.status_code == HTTPStatus.NO_CONTENT, (
+            response_logout.text
+        )
+
+        # 5. 验证登出
+        response_me_after_logout = await client.get("/api/v1/users/me")
+        assert response_me_after_logout.status_code == HTTPStatus.UNAUTHORIZED

@@ -3,7 +3,7 @@
   "name": "EduAgent",
   "dockerComposeFile": ["../dev.docker-compose.yaml"],
   "service": "eduagent-dev",
-  "workspaceFolder": "/home/${localEnv:USER}/eduagent",
+  "workspaceFolder": "/home/yunx/eduagent",
   // 关闭 VS Code 时停止整个 Compose 环境
   "shutdownAction": "stopCompose",
 
