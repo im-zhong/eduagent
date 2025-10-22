@@ -49,18 +49,7 @@ def tex2data(text_str: str) -> ExtractedData | None:
     return ExtractedData.model_validate_json(text_result)
 
 
-def main() -> ExtractedData | None:
-    template = """
-机器学习是人工智能的一个重要分支。它主要研究计算机如何模拟或实现人类的学习行为，
-以获取新的知识或技能，重新组织已有的知识结构使之不断改善自身的性能。
-
-监督学习是机器学习的一种方法，它使用带有标签的数据进行训练。常见的监督学习算法包括：
-线性回归、逻辑回归、支持向量机和决策树。线性回归用于预测连续值，逻辑回归用于分类问题。
-
-无监督学习则使用没有标签的数据，常见的算法有K-means聚类和主成分分析(PCA)。
-K-means聚类可以将数据分成不同的组，而PCA可以用于数据降维。
-"""
-
+def text_extractor(template: str) -> ExtractedData | None:
     text1 = """
 请从以下文本中提取关键知识点，并按照指定的JSON格式输出。
 
@@ -103,7 +92,21 @@ K-means聚类可以将数据分成不同的组，而PCA可以用于数据降维�
     return tex2data(text_result)
 
 
-if __name__ == "__main__":
-    result = main()
+def test() -> None:
+    template = """
+机器学习是人工智能的一个重要分支。它主要研究计算机如何模拟或实现人类的学习行为，
+以获取新的知识或技能，重新组织已有的知识结构使之不断改善自身的性能。
+
+监督学习是机器学习的一种方法，它使用带有标签的数据进行训练。常见的监督学习算法包括：
+线性回归、逻辑回归、支持向量机和决策树。线性回归用于预测连续值，逻辑回归用于分类问题。
+
+无监督学习则使用没有标签的数据，常见的算法有K-means聚类和主成分分析(PCA)。
+K-means聚类可以将数据分成不同的组，而PCA可以用于数据降维。
+"""
+    result = text_extractor(template)
     print(type(result))
     print(result)
+
+
+if __name__ == "__main__":
+    test()
