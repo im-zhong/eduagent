@@ -92,7 +92,7 @@ def text_extractor(template: str) -> ExtractedData | None:
     return tex2data(text_result)
 
 
-def test() -> None:
+def Test() -> None:  # noqa: N802
     template = """
 机器学习是人工智能的一个重要分支。它主要研究计算机如何模拟或实现人类的学习行为，
 以获取新的知识或技能，重新组织已有的知识结构使之不断改善自身的性能。
@@ -106,7 +106,3 @@ K-means聚类可以将数据分成不同的组，而PCA可以用于数据降维�
     result = text_extractor(template)
     print(type(result))
     print(result)
-
-
-if __name__ == "__main__":
-    test()

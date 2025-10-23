@@ -1,7 +1,7 @@
 from eduagent.extractor.text_extractor import *  # noqa: F403, INP001
 
 
-def test_call_zhipu_api() -> None:
+def test_generate_knowladge_list() -> None:
     text_result = """```json
 {
     "knowledge_points": [
