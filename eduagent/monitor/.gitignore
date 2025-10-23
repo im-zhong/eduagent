@@ -1,0 +1,19 @@
+# 忽略 Grafana 和 Prometheus 运行时生成的数据
+# 实际数据存储在项目根目录的 data/ 文件夹中
+
+# 临时文件
+*.tmp
+*.log
+
+# 编辑器文件
+.idea/
+*.swp
+*.swo
+*~
+
+# 备份文件
+*.bak
+*.backup
+
+
+
