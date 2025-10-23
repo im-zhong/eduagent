@@ -30,6 +30,7 @@ services:
       - ~/.gitconfig:/home/${USER}/.gitconfig:ro
       - ~/.git-credentials:/home/${USER}/.git-credentials:ro
       - ~/.ssh:/home/${USER}/.ssh:ro
+      - /etc/ssh:/etc/ssh:ro
       # use local cache, so that we do not install pre commit every time after we rebuild continaer
       - ~/.cache:/home/${USER}/.cache
       # mapping the claude conf file, so we do not need to login again and again
