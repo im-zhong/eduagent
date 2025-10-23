@@ -18,6 +18,8 @@ class ProjectConfig(BaseModel):
 class LLMConfig(BaseModel):
     api_key: str = "NOKEY"
     api_base: str = "https://api.deepseek.com"
+    model_name: str = "glm-4.5"
+    embedding_model_name: str = "embedding_model"
 
 
 class DatabaseConfig(BaseModel):
@@ -42,6 +44,19 @@ class DatabaseConfig(BaseModel):
         }
 
 
+class PGVectorSettings(BaseModel):
+    host: str = "db.eduagent"
+    port: int = 5432
+    user: str = "ysu_keg"
+    password: str = "123456789"
+    dbname: str = "eduagent"
+    collection_name: str = "demo_for_rag"
+
+    @property
+    def connection_string(self) -> str:
+        return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
+
+
 # 总 Settings
 # ------------------------
 class Settings(BaseModel):
@@ -49,6 +64,7 @@ class Settings(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
 
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    pg_vector: PGVectorSettings = Field(default_factory=PGVectorSettings)
 
 
 # ------------------------
