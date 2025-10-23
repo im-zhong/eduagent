@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Build Docker image
         run: |
@@ -22,16 +22,30 @@ jobs:
             -f prod.Dockerfile \
             -t eduagent-prod .
 
-      - name: Deploy FastAPI
+      - name: Deploy Services
         run: docker compose -f prod.docker-compose.yaml up -d
 
-      - name: Wait for services to be ready
+      # 替换sleep
+      - name: Wait for PostgreSQL to be ready
         run: |
-          echo "Waiting for FastAPI to start..."
-          sleep 10  # Or use curl in a loop to check http://localhost:8000/hello
+          echo "Waiting for PostgreSQL to start..."
+          # 循环最多等待60秒
+          for i in {1..12}; do
+            # 进入名为 'eduagent-db' 的容器，并执行 pg_isready 命令
+            # 注意: `-U ${POSTGRES_USER:-ysu_keg}` 会使用你在 prod.docker-compose.yaml 中定义的用户，更具弹性
+            if docker compose -f prod.docker-compose.yaml exec -T eduagent-db pg_isready -U ${POSTGRES_USER:-ysu_keg}; then
+              echo "PostgreSQL is ready!"
+              exit 0 # 成功退出
+            fi
+            echo "Waiting for PostgreSQL... ($i/12)"
+            sleep 5
+          done
+          echo "PostgreSQL did not become ready in time."
+          exit 1 # 失败退出
 
-      - name: Run integration tests
-        run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest tests/integration -v
+      - name: Run all tests
+        run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest
 
-      - name: Tear down
+      - name: Tear down services
+        if: always() # 确保无论成功或失败，清理步骤都会运行
         run: docker compose -f prod.docker-compose.yaml down

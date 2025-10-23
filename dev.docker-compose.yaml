@@ -19,6 +19,7 @@ services:
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
       - ANTHROPIC_SMALL_FAST_MODEL=${ANTHROPIC_SMALL_FAST_MODEL}
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+
     # The image field allows you to specify the name and tag of the image that will be built.
     image: eduagent:${USER}
     command: ["dev"]
@@ -36,7 +37,7 @@ services:
       - ./.claude:/home/${USER}/.claude
       - ./.claude.json:/home/${USER}/.claude.json
     networks:
-      eduagent-network:
+      - eduagent-network
     depends_on:
       - eduagent-db
 
@@ -50,9 +51,10 @@ services:
     volumes:
       - .:/home/${USER}/eduagent
     networks:
-      eduagent-network:
+      - eduagent-network
     depends_on:
-      - eduagent-dev
+      - eduagent-db
+      - eduagent-redis
 
   eduagent-ui:
     image: eduagent:${USER}
@@ -64,7 +66,7 @@ services:
     volumes:
       - .:/home/${USER}/eduagent
     networks:
-      eduagent-network:
+      - eduagent-network
     depends_on:
       - eduagent-dev
       - eduagent-db
@@ -79,10 +81,19 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-ysu_keg}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-123456789}
       - POSTGRES_DB=${POSTGRES_DB:-eduagent}
-    networks:
-      - eduagent-network
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - eduagent-network
+
+  eduagent-redis:
+    image: redis:7
+    hostname: redis.eduagent
+    restart: unless-stopped
+    expose:
+      - 6379
+    networks:
+      - eduagent-network
 
   # 容器监控 - 收集 Docker 容器指标
   cadvisor:
@@ -151,3 +162,4 @@ services:
 
 networks:
   eduagent-network:
+    name: eduagent-${USER}-network

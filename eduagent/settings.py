@@ -1,7 +1,3 @@
-# settings
-# conf file is way better than env variables, so we use toml
-
-
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -11,16 +7,36 @@ from pydantic import BaseModel, Field
 from eduagent.defs import defs
 
 
+class RedisConfig(BaseModel):
+    """Redis 数据库配置"""
+
+    host: str = "eduagent-redis"
+    port: int = 6379
+    db: int = 0
+
+
+class ApiConfig(BaseModel):
+    """API 相关配置,例如 JWT 密钥"""
+
+    secret_key: str = "a_very_secret_key_that_should_be_changed"
+
+
 class ProjectConfig(BaseModel):
+    """项目通用配置"""
+
     api_version: str = "v1"
 
 
 class LLMConfig(BaseModel):
+    """大语言模型(LLM)相关配置"""
+
     api_key: str = "NOKEY"
     api_base: str = "https://api.deepseek.com"
 
 
 class DatabaseConfig(BaseModel):
+    """PostgreSQL 数据库配置"""
+
     user: str = "ysu_keg"
     password: str = "123456789"
     host: str = "db.eduagent"
@@ -29,10 +45,12 @@ class DatabaseConfig(BaseModel):
 
     @property
     def sqlalchemy_url(self) -> str:
+        """生成 SQLAlchemy 使用的数据库连接 URL"""
         return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
     @property
     def db_dict(self) -> dict[str, Any]:
+        """以字典形式返回数据库连接参数"""
         return {
             "user": self.user,
             "password": self.password,
@@ -42,18 +60,20 @@ class DatabaseConfig(BaseModel):
         }
 
 
-# 总 Settings
-# ------------------------
+# --- 总的 Settings 类 ---
 class Settings(BaseModel):
+    """
+    应用总配置,聚合所有子配置项。
+    """
+
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
-
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    api: ApiConfig = Field(default_factory=ApiConfig)
 
 
-# ------------------------
-# 工厂函数
-# ------------------------
+# --- 工厂函数 ---
 def new_settings(path: str | Path) -> Settings:
     path = Path(path)
     if not path.exists():
@@ -72,5 +92,5 @@ def create_default_settings() -> Settings:
     return new_settings(defs.pathes.default_settings_file)
 
 
-# 应该在有配置文件的时候读取配置文件，没有的话就用默认值
+# 全局配置实例
 settings: Settings = create_default_settings()
