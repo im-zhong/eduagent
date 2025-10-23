@@ -13,3 +13,4 @@ Assist educators and learners by automatically generating educational questions 
 - G_shang_hui <271278430@qq.com>
 - Marisolebxf <835245656@qq.com>
 - Zhou <lz4530_j@163.com>
+- qinxingkun <1915732401@qq.com>

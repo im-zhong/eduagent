@@ -6,7 +6,7 @@
 repos:
   # Some out-of-the-box hooks for pre-commit
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       # Prevent giant files from being committed
       - id: check-added-large-files
@@ -57,7 +57,7 @@ repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.13.0
+    rev: v0.14.0
     hooks:
       # Run the linter.
       - id: ruff
@@ -66,10 +66,7 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.405
+    rev: v1.1.406
     hooks:
       - id: pyright
-        additional_dependencies: []
         args: ["--warnings", "--project=pyproject.toml"]
-        # Use the pyright installed in the local environment
-        language: system

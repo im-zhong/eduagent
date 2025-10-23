@@ -1,8 +1,28 @@
 # Main API application
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from eduagent.storage.engine import async_engine
+from eduagent.user.models import Base
+
+# --------------------
 from .endpoints import api_routers
+
+
+# 2. 保留你的 lifespan 函数，用于应用启动时创建数据库表
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """
+    在应用启动时, 创建数据库表
+    """
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # 应用关闭时的清理工作（如果需要）
+
 
 # Create FastAPI application
 api = FastAPI(
@@ -11,9 +31,10 @@ api = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,  # 3. 应用你的 lifespan
 )
 
-# Configure CORS
+# Configure CORS (与主分支保持一致)
 api.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -22,8 +43,10 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
-# Include all API routers
+# 4. 采用主分支的循环方式注册所有 API 路由
 for router in api_routers:
+    # 你的 users_router 应该有自己的 tags，这里统一为 "AI Education Services"
+    # 如果需要为 users_router 设置不同的 tag, 你需要在 endpoints/users.py 中定义好
     api.include_router(router, prefix="/api/v1", tags=["AI Education Services"])
 
 
