@@ -5,7 +5,7 @@
 
 repos:
   # Some out-of-the-box hooks for pre-commit
-  - repo: git@github.com:pre-commit/pre-commit-hooks.git
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       # Prevent giant files from being committed
@@ -42,20 +42,20 @@ repos:
 
   # This is a pre-commit hook which verifies that .json files in a repository are valid JSON5.
   # The JSON5 format is similar to JSON, but it permits comments, trailing commas, and more.
-  - repo: git@github.com:bmares/check-json5.git
+  - repo: https://gitlab.com/bmares/check-json5.git
     rev: v1.0.0
     hooks:
       - id: check-json5
 
   # Prettier(https://prettier.io/) is an opinionated code formatter
-  - repo: git@github.com:pre-commit/mirrors-prettier.git
+  - repo: https://github.com/pre-commit/mirrors-prettier.git
     rev: v4.0.0-alpha.8
     hooks:
       # Run prettier on specified file types
       - id: prettier
         types_or: [json, toml, xml, yaml]
 
-  - repo: git@github.com:astral-sh/ruff-pre-commit.git
+  - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.14.0
     hooks:
@@ -65,7 +65,7 @@ repos:
       # Run the formatter.
       - id: ruff-format
 
-  - repo: git@github.com:RobertCraigie/pyright-python.git
+  - repo: https://github.com/RobertCraigie/pyright-python.git
     rev: v1.1.406
     hooks:
       - id: pyright

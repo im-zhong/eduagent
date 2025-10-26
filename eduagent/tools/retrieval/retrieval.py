@@ -3,8 +3,8 @@
 # ref: https://python.langchain.com/docs/integrations/vectorstores/pgvector/
 
 
-#from typing import List
-#from dotenv import load_dotenv  # 导入加载配置的库
+# from typing import List
+# from dotenv import load_dotenv  # 导入加载配置的库
 # --- ZhipuAI LangChain 集成 ---
 from typing import Any
 
@@ -22,30 +22,30 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langgraph.graph import START, StateGraph  # type: ignore
 from typing_extensions import TypedDict
 
-#改成setting文件导入我的配置文件
+# 改成setting文件导入我的配置文件
 from eduagent.defs import defs
 from eduagent.settings import new_settings
 
-settings = new_settings(defs.pathes.example_settings_file)  #创建一个setting实例
+settings = new_settings(defs.pathes.example_settings_file)  # 创建一个setting实例
 
 # 从settings中获取配置
-ZHIPUAI_API_KEY: str= settings.llm.api_key
+ZHIPUAI_API_KEY: str = settings.llm.api_key
 PG_CONNECTION_STRING = settings.pg_vector.connection_string
 COLLECTION_NAME: str = settings.pg_vector.collection_name
 
 # 初始化模型
 # 初始化嵌入模型
 embeddings = ZhipuAIEmbeddings(
-    api_key="你的API密钥",
-    model="embedding-2"  # 默认就是 embedding-2
+    api_key="201dda3d7431484980e455d92e551644.q8DhEMdchw35XSnE",
+    model="embedding-2",  # 默认就是 embedding-2
 )
 llm = ChatZhipuAI(
     model="glm-4",
-    api_key="你的API密钥",
-    temperature=0.1
-    )
+    api_key="201dda3d7431484980e455d92e551644.q8DhEMdchw35XSnE",
+    temperature=0.1,
+)
 
-#准备数据
+# 准备数据
 docs = [
     Document(
         page_content="there are cats in the pond",
@@ -86,9 +86,9 @@ docs = [
     Document(
         page_content="a cooking class for beginners is offered at the community center",
         metadata={"id": 10, "location": "community center", "topic": "classes"},
-    )
-    ]
-#文档拆分
+    ),
+]
+# 文档拆分
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 all_splits = text_splitter.split_documents(docs)
 
@@ -105,13 +105,15 @@ rag_template = """你是一个专业的问答助手，请根据提供的上下�
     Answer:
     """
 prompt = PromptTemplate.from_template(template=rag_template)
+
+
 class State(TypedDict):
     question: str
     context: list[Document]
     answer: str
 
 
-#连接向量数据库，并且初始化一些数据进去
+# 连接向量数据库，并且初始化一些数据进去
 def setup_vector_store() -> PGVector:
     """
     设置并连接到 PGVector 向量存储。
@@ -128,25 +130,31 @@ def setup_vector_store() -> PGVector:
 
     return vector_store
 
-#创建向量数据库实例
+
+# 创建向量数据库实例
 vector_store = setup_vector_store()
 
-def retrieve(state: State) -> dict[str,list[Document]]:
-    retriever = vector_store.as_retriever( search_kwargs={"k": 3})
+
+def retrieve(state: State) -> dict[str, list[Document]]:
+    retriever = vector_store.as_retriever(search_kwargs={"k": 3})
     res = retriever.invoke(state["question"])
     return {"context": res}
 
-def generate(state: State)->dict[str,str | list[str | dict[Any, Any]]]:
-    docs_content:str = "\n\n".join(doc.page_content for doc in state["context"])
-    messages:PromptValue = prompt.format_prompt(question= state["question"], context= docs_content)
-    response = llm.invoke(messages)
-    return {"answer": response.content} # type: ignore
 
-def simple_rag_retrieval(query: dict[str,str]) -> str:
-    #组成工作流
-    graph_builder = StateGraph(State).add_sequence([retrieve, generate])
-    graph_builder.add_edge(START, "retrieve")
-    graph = graph_builder.compile() # type: ignore
-    #执行工作流
-    response = graph.invoke(query) # type: ignore
-    return response["answer"]
+def generate(state: State) -> dict[str, str | list[str | dict[Any, Any]]]:
+    docs_content: str = "\n\n".join(doc.page_content for doc in state["context"])
+    messages: PromptValue = prompt.format_prompt(
+        question=state["question"], context=docs_content
+    )
+    response = llm.invoke(messages)
+    return {"answer": response.content}  # type: ignore
+
+
+def simple_rag_retrieval(query: dict[str, str]) -> str:
+    # 组成工作流
+    graph_builder = StateGraph(State).add_sequence([retrieve, generate])  # type: ignore
+    graph_builder.add_edge(START, "retrieve")  # type: ignore
+    graph = graph_builder.compile()  # type: ignore
+    # 执行工作流
+    response = graph.invoke(query)  # type: ignore
+    return response["answer"]  # type: ignore

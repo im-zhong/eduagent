@@ -78,12 +78,12 @@ fi
 ##############################################
 # 5. 检查 SSH 连接 GitHub
 ##############################################
-if git ls-remote git@github.com:im-zhong/eduagent.git &>/dev/null; then
-    echo "✅ GitHub SSH 配置正确"
-else
-    echo "❌ GitHub SSH 配置失败，请检查 SSH key 设置"
-    exit 1
-fi
+# if git ls-remote git@github.com:im-zhong/eduagent.git &>/dev/null; then
+#     echo "✅ GitHub SSH 配置正确"
+# else
+#     echo "❌ GitHub SSH 配置失败，请检查 SSH key 设置"
+#     exit 1
+# fi
 
 ##############################################
 # 6. 检查 Docker
