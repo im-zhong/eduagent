@@ -31,24 +31,24 @@ from eduagent.settings import new_settings
 settings = new_settings(defs.pathes.example_settings_file)  # 创建一个setting实例
 
 load_dotenv()  # 加载配置文件
-
-# 从settings中获取配置
-ZHIPUAI_API_KEY: str = settings.llm.api_key
 PG_CONNECTION_STRING = settings.pg_vector.connection_string
 COLLECTION_NAME: str = settings.pg_vector.collection_name
+
+zhipu_api_key = os.getenv("ZHIPUAI_API_KEY")
+
+assert zhipu_api_key is not None
+# 从settings中获取配置
 
 # 初始化模型
 # 初始化嵌入模型
 embeddings = ZhipuAIEmbeddings(
-    api_key=os.getenv("API_KEY"),  # type: ignore
-    model="embedding-2",  # 默认就是 embedding-2
+    api_key=zhipu_api_key,
+    model="embedding-2",
 )
 llm = ChatZhipuAI(
     model="glm-4v",
-    api_key=os.getenv("API_KEY"),
     temperature=0.1,
 )
-
 # 准备数据
 docs = [
     Document(
