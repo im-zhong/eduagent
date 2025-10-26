@@ -45,8 +45,8 @@ embeddings = ZhipuAIEmbeddings(
 )
 llm = ChatZhipuAI(
     model="glm-4v",
-    api_key=os.getenv("API_KEY"),  # type: ignore
-    temperature=0.1,  # type: ignore
+    api_key=os.getenv("API_KEY"),
+    temperature=0.1,
 )
 
 # 准备数据
