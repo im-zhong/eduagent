@@ -62,9 +62,6 @@ class DatabaseConfig(BaseModel):
         }
 
 
-
-
-
 class PGVectorSettings(BaseModel):
     host: str = "db.eduagent"
     port: int = 5432
