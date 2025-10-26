@@ -23,7 +23,8 @@ jobs:
             -t eduagent-prod .
 
       - name: Deploy Services
-        run: docker compose -f prod.docker-compose.yaml up -d
+        run: docker compose -f prod.docker-compose.yaml up -d eduagent-api eduagent-db
+        # run: docker compose -f prod.docker-compose.yaml up -d
 
       # 替换sleep
       - name: Wait for PostgreSQL to be ready
