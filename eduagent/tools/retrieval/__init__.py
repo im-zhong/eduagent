@@ -11,16 +11,14 @@ from langchain_community.embeddings import ZhipuAIEmbeddings
 
 # --- 核心 LangChain 组件导入 ---
 from langchain_core.documents import Document
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
 
 # --- PGVector 导入 ---
 from langchain_postgres.vectorstores import PGVector
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langgraph.graph import START, StateGraph
+from typing_extensions import List, TypedDict
 
-# 1. 加载配置文件uv
-# 加载 .env 文件中的配置到 os.environ
-#load_dotenv()
 #改成setting文件导入我的配置文件
 from eduagent.defs import defs
 from eduagent.settings import new_settings
@@ -29,77 +27,70 @@ settings = new_settings(defs.pathes.example_settings_file)  #创建一个setting
 
 # 从settings中获取配置
 ZHIPUAI_API_KEY: str= settings.llm.api_key
-assert ZHIPUAI_API_KEY is not None
 PG_CONNECTION_STRING = settings.pg_vector.connection_string
 COLLECTION_NAME: str = settings.pg_vector.collection_name
-assert COLLECTION_NAME is not None
-GLM_MODEL: str = settings.llm.model_name
-EMBEDDING_MODEL = settings.llm.embedding_model_name
 
-# 检查必要的配置项
-if not all([ZHIPUAI_API_KEY, PG_CONNECTION_STRING, COLLECTION_NAME]):
-    missing = [
-        k
-        for k, v in {
-            "ZHIPUAI_API_KEY": ZHIPUAI_API_KEY,
-            "PG_CONNECTION_STRING": PG_CONNECTION_STRING,
-            "COLLECTION_NAME": COLLECTION_NAME,
-        }.items()
-        if not v
+# 初始化模型
+# 初始化嵌入模型
+embeddings = ZhipuAIEmbeddings(
+    api_key="你的API密钥",
+    model="embedding-2"  # 默认就是 embedding-2
+)
+llm = ChatZhipuAI(
+    model="glm-4", 
+    api_key="你的API密钥",
+    temperature=0.1
+    )
+
+#准备数据
+docs = [
+    Document(
+        page_content="there are cats in the pond",
+        metadata={"id": 1, "location": "pond", "topic": "animals"},
+    ),
+    Document(
+        page_content="ducks are also found in the pond",
+        metadata={"id": 2, "location": "pond", "topic": "animals"},
+    ),
+    Document(
+        page_content="fresh apples are available at the market",
+        metadata={"id": 3, "location": "market", "topic": "food"},
+    ),
+    Document(
+        page_content="the market also sells fresh oranges",
+        metadata={"id": 4, "location": "market", "topic": "food"},
+    ),
+    Document(
+        page_content="the new art exhibit is fascinating",
+        metadata={"id": 5, "location": "museum", "topic": "art"},
+    ),
+    Document(
+        page_content="a sculpture exhibit is also at the museum",
+        metadata={"id": 6, "location": "museum", "topic": "art"},
+    ),
+    Document(
+        page_content="a new coffee shop opened on Main Street",
+        metadata={"id": 7, "location": "Main Street", "topic": "food"},
+    ),
+    Document(
+        page_content="the book club meets at the library",
+        metadata={"id": 8, "location": "library", "topic": "reading"},
+    ),
+    Document(
+        page_content="the library hosts a weekly story time for kids",
+        metadata={"id": 9, "location": "library", "topic": "reading"},
+    ),
+    Document(
+        page_content="a cooking class for beginners is offered at the community center",
+        metadata={"id": 10, "location": "community center", "topic": "classes"},
+    )
     ]
-    raise OSError(
-        f"配置文件 (.env) 中缺少以下关键配置项: {', '.join(missing)}。请检查您的 .env 文件。"
-    )
+#文档拆分
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+all_splits = text_splitter.split_documents(docs)
 
-
-def setup_vector_store(texts: list[str]) -> PGVector:
-    """
-    设置并连接到 PGVector 向量存储。
-    配置信息来自 .env 文件。
-    """
-    
-    # 1. ZhipuAI Embedding 模型
-    embeddings = ZhipuAIEmbeddings(
-        model = EMBEDDING_MODEL,
-        api_key = ZHIPUAI_API_KEY   # 明确传递 API Key
-    )
-
-    # 2. 连接到 PGVector
-    vector_store = PGVector(
-        embeddings=embeddings,  # 文本转向量所使用的嵌入模型
-        collection_name=COLLECTION_NAME,  # RAG 应用知识库的唯一标识符。一旦您在代码中决定了一个名称（并通过 .env 文件配置），那么所有的加载、存储和检索操作都必须使用这个名称才能访问到正确的向量数据。
-        connection=PG_CONNECTION_STRING,  # 数据库连接字符串
-        use_jsonb=True,  # 推荐使用 JSONB 存储 元数据
-    )
-
-    # 3. 填充文档（只有在集合为空时才执行）
-    if not vector_store.get(limit=1)["ids"]:
-        print(f"PGVector 集合 '{COLLECTION_NAME}' 为空，正在创建和填充文档...")
-        docs = [Document(page_content=t) for t in texts]
-        vector_store.add_documents(docs)
-        print(f"已向 {COLLECTION_NAME} 集合中添加 {len(docs)} 个文档。")
-    else:
-        print(f"PGVector 集合 '{COLLECTION_NAME}' 已存在，跳过填充。")
-
-    return vector_store
-
-
-def simple_rag_retrieval(query: str, vector_store: PGVector) -> str:
-    """
-    通过 LangChain RAG 链使用 GLM-4.5 和 PGVector 进行检索。
-    """
-    # 1. 配置 GLM-4.5 LLM
-    llm = ChatZhipuAI(
-        model=GLM_MODEL,
-        temperature=0.1,
-        api_key=ZHIPUAI_API_KEY,  # 明确传递 API Key
-    )
-
-    # 2. 创建检索器 (Retriever)
-    retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-
-    # 3. 定义 RAG 提示模板
-    template = """你是一个专业的问答助手，请根据提供的上下文 (Context) 来回答问题 (Question)。
+# 定义 RAG 提示模板
+rag_template = """你是一个专业的问答助手，请根据提供的上下文 (Context) 来回答问题 (Question)。
     你的回答必须使用中文，并请只使用你从 Context 中获得的信息来回答。
     如果 Context 中没有相关信息，请诚实地回答你不知道。
 
@@ -110,21 +101,49 @@ def simple_rag_retrieval(query: str, vector_store: PGVector) -> str:
 
     Answer:
     """
-    prompt = ChatPromptTemplate.from_template(template)
+prompt = ChatPromptTemplate.from_template(template=rag_template)
+class State(TypedDict):
+    question: str
+    context: List[Document]
+    answer: str
 
-    # 4. 构建 RAG Chain 
-    def format_docs(docs: list[Document]) -> str:
-        """将检索到的文档列表格式化为单个字符串，作为 Context 传递。"""
-        return "\n\n".join(doc.page_content for doc in docs)
 
-    rag_chain = (
-        # 检索器：使用用户的 question 检索 docs
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt  # 组合提示词
-        | llm  # 调用 GLM-4.5
-        | StrOutputParser()  # 解析输出为字符串
+#连接向量数据库，并且初始化一些数据进去
+def setup_vector_store() -> PGVector:
+    """
+    设置并连接到 PGVector 向量存储。
+    配置信息来自 settings文件。
+    """
+    # 2. 连接到 PGVector
+    vector_store = PGVector(
+        embeddings=embeddings,  # 文本转向量所使用的嵌入模型
+        collection_name=COLLECTION_NAME,  # RAG 应用知识库的唯一标识符。一旦您在代码中决定了一个名称（并通过 .env 文件配置），那么所有的加载、存储和检索操作都必须使用这个名称才能访问到正确的向量数据。
+        connection=PG_CONNECTION_STRING,  # 数据库连接字符串
+        use_jsonb=True,  # 推荐使用 JSONB 存储 元数据
     )
+    vector_store.add_documents(documents=all_splits)
 
-    # 5. 执行 Chain
-    response = rag_chain.invoke(query)
-    return response
+    return vector_store
+
+#创建向量数据库实例
+vector_store = setup_vector_store()
+
+def retrieve(state: State):
+    retriever = vector_store.as_retriever( search_kwargs={"k": 3})
+    res = retriever.invoke(state["question"])
+    return {"context": res}
+
+def generate(state: State):
+    docs_content = "\n\n".join(doc.page_content for doc in state["context"])
+    messages = prompt.invoke({"question": state["question"], "context": docs_content})
+    response = llm.invoke(messages)
+    return {"answer": str(response.content)}
+
+def simple_rag_retrieval(query: dict) -> str:
+    #组成工作流
+    graph_builder = StateGraph(State).add_sequence([retrieve, generate])
+    graph_builder.add_edge(START, "retrieve")
+    graph = graph_builder.compile()
+    #执行工作流
+    response = graph.invoke(query)
+    return response["answer"]
