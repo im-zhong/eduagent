@@ -6,8 +6,10 @@
 # from typing import List
 # from dotenv import load_dotenv  # 导入加载配置的库
 # --- ZhipuAI LangChain 集成 ---
+import os
 from typing import Any
 
+from dotenv import load_dotenv
 from langchain_community.chat_models import ChatZhipuAI
 from langchain_community.embeddings import ZhipuAIEmbeddings
 
@@ -28,6 +30,8 @@ from eduagent.settings import new_settings
 
 settings = new_settings(defs.pathes.example_settings_file)  # 创建一个setting实例
 
+load_dotenv()  # 加载配置文件
+
 # 从settings中获取配置
 ZHIPUAI_API_KEY: str = settings.llm.api_key
 PG_CONNECTION_STRING = settings.pg_vector.connection_string
@@ -36,13 +40,13 @@ COLLECTION_NAME: str = settings.pg_vector.collection_name
 # 初始化模型
 # 初始化嵌入模型
 embeddings = ZhipuAIEmbeddings(
-    api_key="201dda3d7431484980e455d92e551644.q8DhEMdchw35XSnE",
+    api_key=os.getenv("API_KEY"),  # type: ignore
     model="embedding-2",  # 默认就是 embedding-2
 )
 llm = ChatZhipuAI(
-    model="glm-4",
-    api_key="201dda3d7431484980e455d92e551644.q8DhEMdchw35XSnE",
-    temperature=0.1,
+    model="glm-4v",
+    api_key=os.getenv("API_KEY"),  # type: ignore
+    temperature=0.1,  # type: ignore
 )
 
 # 准备数据
