@@ -60,7 +60,7 @@ class SimpleRetrievalDemo:
         # 定义 RAG 提示模板
         rag_template = """你是一个专业的问答助手，请根据提供的上下文 (Context) 来回答问题 (Question)。
             你的回答必须使用中文，并请只使用你从 Context 中获得的信息来回答。
-            如果 Context 中没有相关信息，请诚实地回答你不知道,仅仅返回不知道三个字即可。
+            如果 Context 中没有相关信息，请诚实地回答你不知道,不要使用任何其他知识。
 
             Context:
             {context}
@@ -84,7 +84,7 @@ class SimpleRetrievalDemo:
         # 所用到的嵌入模型
         embeddings = ZhipuAIEmbeddings(
             api_key=self.api_key,
-            model="embedding-2",
+            model="embedding-3",
         )
         # 创建PGVector实例
         vector_store = PGVector(
@@ -118,7 +118,7 @@ class SimpleRetrievalDemo:
         messages: PromptValue = self.create_prompt().format_prompt(
             question=state["question"], context=docs_content
         )
-        llm = ChatZhipuAI(model="glm-4v", api_key=self.api_key, temperature=0.1)
+        llm = ChatZhipuAI(model="glm-4", api_key=self.api_key, temperature=0.0)
         response = llm.invoke(messages)
         return {"answer": response.content}  # type: ignore
 

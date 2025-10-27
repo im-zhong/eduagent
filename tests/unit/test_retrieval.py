@@ -69,7 +69,15 @@ def test_retrieve_function(sample_documents: list[Document]) -> None:
         settings.pg_vector.collection_name,
     )
     simpel_rag.setup_vector_store()
+    # 清理现有数据
+    vector_store = simpel_rag.get_vector_store()
+    if hasattr(vector_store, "delete_collection"):
+        vector_store.delete_collection()
+
+    # 重新设置向量存储
+    simpel_rag.setup_vector_store()
     simpel_rag.add_docs_to_vector_store(sample_documents)
+
     result = simpel_rag.retrieve(state_with_question)
 
     # 验证返回结果context是list类型
@@ -106,16 +114,19 @@ def test_generate_function(sample_documents: list[Document]) -> None:
         # assert "猫" in result["answer"]
 
 
-# 测试的返回结果不对，要求返回不知道
-# def test_generate_empty_context() -> None:
-# """测试空上下文生成,返回不知道"""
-# state = State(question="What animals are in the pond?", context=[], answer="")
-# simpel_rag = SimpleRetrievalDemo(settings.api.secret_key,settings.pg_vector.connection_string,settings.pg_vector.collection_name)
-# result = simpel_rag.generate(state)
+def test_generate_empty_context() -> None:
+    """测试空上下文生成,返回不知道"""
+    state = State(question="What animals are in the pond?", context=[], answer="")
+    simpel_rag = SimpleRetrievalDemo(
+        settings.api.secret_key,
+        settings.pg_vector.connection_string,
+        settings.pg_vector.collection_name,
+    )
+    result = simpel_rag.generate(state)
 
-# assert "answer" in result
-# assert isinstance(result["answer"], (str, list))
-# assert "不知道" in result["answer"]
+    assert "answer" in result
+    assert isinstance(result["answer"], (str, list))
+    assert "不知道" in result["answer"]
 
 
 def test_simple_rag_retrieval_basic(sample_documents: list[Document]) -> None:
