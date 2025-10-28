@@ -30,7 +30,7 @@ router = APIRouter()
 
 # 认证路由 (登录, 登出)
 router.include_router(
-    fastapi_users.get_auth_router(auth_backend),
+    fastapi_users.get_auth_router(auth_backend),  # type: ignore
     prefix="/auth/jwt",
     tags=["auth"],
 )

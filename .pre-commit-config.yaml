@@ -42,13 +42,13 @@ repos:
 
   # This is a pre-commit hook which verifies that .json files in a repository are valid JSON5.
   # The JSON5 format is similar to JSON, but it permits comments, trailing commas, and more.
-  - repo: https://gitlab.com/bmares/check-json5
+  - repo: https://gitlab.com/bmares/check-json5.git
     rev: v1.0.0
     hooks:
       - id: check-json5
 
   # Prettier(https://prettier.io/) is an opinionated code formatter
-  - repo: https://github.com/pre-commit/mirrors-prettier
+  - repo: https://github.com/pre-commit/mirrors-prettier.git
     rev: v4.0.0-alpha.8
     hooks:
       # Run prettier on specified file types
@@ -65,7 +65,7 @@ repos:
       # Run the formatter.
       - id: ruff-format
 
-  - repo: https://github.com/RobertCraigie/pyright-python
+  - repo: https://github.com/RobertCraigie/pyright-python.git
     rev: v1.1.406
     hooks:
       - id: pyright

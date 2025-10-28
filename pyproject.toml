@@ -7,7 +7,7 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "aiosqlite>=0.20.0",
     "fastapi>=0.116.1",
-    "fastapi-users[sqlalchemy,redis]>=14.0.1",
+    "fastapi-users[sqlalchemy,redis]",
     "SQLAlchemy-Utils>=0.41.1",
     "asyncpg>=0.29.0",
     "PyJWT>=2.8.0",
@@ -23,6 +23,10 @@ dependencies = [
     "requests>=2.32.5",
     "streamlit>=1.49.1",
     "uvicorn>=0.35.0",
+    "langchain-postgres",
+    "langchain-community>=0.2.19",
+    "zhipuai>=2.0.0",
+    "langgraph",
 ]
 
 [dependency-groups]
