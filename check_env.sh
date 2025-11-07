@@ -19,7 +19,7 @@ add_if_missing() {
     local value=$2
 
     if grep -qE "^${key}=" "$ENV_FILE"; then
-        echo "✅ $key 已存在于 $ENV_FILE，跳过"
+        echo "✅ $key 已存在于 ${ENV_FILE} ，跳过"
     else
         echo "${key}=${value}" >> "$ENV_FILE"
         echo "➕ 已写入 $key=$value 到 $ENV_FILE"
@@ -130,7 +130,7 @@ if [ ! -f "$CLAUDE_FILE" ]; then
 EOF
     echo "✅ 已生成 $CLAUDE_FILE"
 else
-    echo "✅ 检测到已有 $CLAUDE_FILE，跳过创建"
+    echo "✅ 检测到已有 $CLAUDE_FILE ，跳过创建"
 fi
 
 mkdir -p .claude

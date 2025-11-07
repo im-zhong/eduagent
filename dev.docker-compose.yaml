@@ -40,7 +40,21 @@ services:
     networks:
       - eduagent-network
     depends_on:
-      - eduagent-db
+      - eduagent-api
+
+  eduagent-ui:
+    image: eduagent:${USER}
+    command: ["ui"]
+    hostname: ui.eduagent
+    expose:
+      - 8501
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      - eduagent-network
+    depends_on:
+      - eduagent-api
 
   eduagent-api:
     image: eduagent:${USER}
@@ -57,21 +71,6 @@ services:
       - eduagent-db
       - eduagent-redis
 
-  eduagent-ui:
-    image: eduagent:${USER}
-    command: ["ui"]
-    hostname: ui.eduagent
-    expose:
-      - 8501
-    restart: unless-stopped
-    volumes:
-      - .:/home/${USER}/eduagent
-    networks:
-      - eduagent-network
-    depends_on:
-      - eduagent-dev
-      - eduagent-db
-
   eduagent-db:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
@@ -83,8 +82,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-123456789}
       - POSTGRES_DB=${POSTGRES_DB:-eduagent}
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # init docker of database
+      # - ./data/postgres:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # init docker of database
     networks:
       - eduagent-network
 

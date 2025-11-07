@@ -58,7 +58,7 @@ case "$1" in
         ;;
     ui)
         echo "Starting Streamlit..."
-        install_deps
+        # install_deps
 
         export PYTHONPATH=.
         exec uv run streamlit run eduagent/ui/main.py
@@ -66,7 +66,7 @@ case "$1" in
     dev)
         echo "Starting both FastAPI and Streamlit in development mode..."
 
-        install_deps
+        # install_deps
         install_precommit
         # install claude code envs, I need to check the json file on the ~/.claude.json and ~/.claude
         # and I should use the proper API KEY, maybe on different project, I want to use different key
