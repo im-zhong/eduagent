@@ -35,6 +35,8 @@ jobs:
         run: uv run pyright --warnings --project=pyproject.toml
 
       - name: Run tests and generate coverage
+        env:
+          API_KEY: ${{ secrets.BIGMODEL_API_KEY }}
         run: PYTHONPATH=. uv run pytest tests/unit -v --cov=eduagent --cov-branch --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage reports to Codecov

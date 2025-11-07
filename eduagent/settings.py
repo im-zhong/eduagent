@@ -1,3 +1,4 @@
+import os
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -99,7 +100,13 @@ def new_settings(path: str | Path) -> Settings:
     with path.open("rb") as f:
         data = tomllib.load(f)
 
-    return Settings(**data)
+    settings = Settings(**data)
+    # 为了支持CICD，如果环境中存在变量API_KEY, 就会直接覆盖配置文件
+    api_key_env = os.environ.get("API_KEY")
+
+    if api_key_env:
+        settings.llm.api_key = api_key_env
+    return settings
 
 
 def create_default_settings() -> Settings:
