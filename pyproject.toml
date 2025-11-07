@@ -65,8 +65,14 @@ exclude = [
     "**/node_modules", "**/__pycache__", ".venv", "build", "dist", "data",
 ]
 
-[tool.pyright.report]
+#[tool.pyright.report]
 # reportUnknownMemberType = "none"
+# let pyright do not complain about missing type stubs for third-party libraries
+# /home/zhangzhong/eduagent/tests/unit/test_api_key.py
+#   /home/zhangzhong/eduagent/tests/unit/test_api_key.py:1:8 - error: Stub file not found for "zhipuai" (reportMissingTypeStubs)
+#   /home/zhangzhong/eduagent/tests/unit/test_api_key.py:2:6 - error: Stub file not found for "zhipuai.types.chat.chat_completion" (reportMissingTypeStubs)
+# 2 errors, 0 warnings, 0 informations
+reportMissingTypeStubs = false
 
 [tool.setuptools]
 packages = ["eduagent"]

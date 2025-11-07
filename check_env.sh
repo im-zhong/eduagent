@@ -19,7 +19,7 @@ add_if_missing() {
     local value=$2
 
     if grep -qE "^${key}=" "$ENV_FILE"; then
-        echo "✅ $key 已存在于 $ENV_FILE，跳过"
+        echo "✅ $key 已存在于 ${ENV_FILE} ，跳过"
     else
         echo "${key}=${value}" >> "$ENV_FILE"
         echo "➕ 已写入 $key=$value 到 $ENV_FILE"
@@ -28,6 +28,7 @@ add_if_missing() {
 
 USER_UID=$(id -u)
 
+add_if_missing "PYTHONPATH" "."
 add_if_missing "USER_UID" "$USER_UID"
 add_if_missing "USER" "$USER"
 
@@ -130,10 +131,43 @@ if [ ! -f "$CLAUDE_FILE" ]; then
 EOF
     echo "✅ 已生成 $CLAUDE_FILE"
 else
-    echo "✅ 检测到已有 $CLAUDE_FILE，跳过创建"
+    echo "✅ 检测到已有 $CLAUDE_FILE ，跳过创建"
 fi
 
 mkdir -p .claude
+
+# 添加必要的环境变量
+# ANTHROPIC_BASE_URL=https://open.bigmodel.cn/api/anthropic
+# ANTHROPIC_API_KEY=
+# ANTHROPIC_MODEL=glm-4.5
+# ANTHROPIC_SMALL_FAST_MODEL=glm-4.5-air
+# .env里面的环境变量不能覆盖shell已经存在的同名变量，所以在docker compose里面写的环境就没用
+# 所以我们从USER_开头来区分 就可以了
+# 好像这里的环境变量并不能覆盖 目前的shell里面已经有的环境变量？
+# 是因为vscode的设置问题吗？设置了也没用
+# 总之不能和宿主机上的环境变量冲突啊
+add_if_missing "USER_ANTHROPIC_BASE_URL" "https://open.bigmodel.cn/api/anthropic"
+add_if_missing "USER_ANTHROPIC_API_KEY" ""
+add_if_missing "USER_ANTHROPIC_MODEL" "glm-4.5"
+add_if_missing "USER_ANTHROPIC_SMALL_FAST_MODEL" "glm-4.5-air"
+
+# check the api key is set or not, if not set, issue a warning
+if grep -qE "^USER_ANTHROPIC_API_KEY=\s*$" "$ENV_FILE"; then
+    echo "⚠️ 警告: USER_ANTHROPIC_API_KEY 未设"
+else
+    echo "✅ USER_ANTHROPIC_API_KEY 已设置"
+fi
+
+## 9. 检查是否存在配置文件，如果有则忽略，如果没有，那么就复制 example.eduagent.toml -> eduagent.toml
+# 并提醒修改配置文件
+CONFIG_FILE="eduagent.toml"
+EXAMPLE_CONFIG_FILE="example.eduagent.toml"
+if [ ! -f "$CONFIG_FILE" ]; then
+    cp "$EXAMPLE_CONFIG_FILE" "$CONFIG_FILE"
+    echo "⚠️ 警告: 未检测到 $CONFIG_FILE ，已从 $EXAMPLE_CONFIG_FILE 复制一份，请根据需要修改配置文件内容！"
+else
+    echo "✅ 检测到已有 $CONFIG_FILE ，跳过创建"
+fi
 
 ##############################################
 # 全部检查通过

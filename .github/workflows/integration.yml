@@ -45,7 +45,7 @@ jobs:
           exit 1 # 失败退出
 
       - name: Run all tests
-        run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. uv run pytest
+        run: docker compose -f prod.docker-compose.yaml exec -T eduagent-api env PYTHONPATH=. API_KEY=${{ secrets.BIGMODEL_API_KEY }} uv run pytest
 
       - name: Tear down services
         if: always() # 确保无论成功或失败，清理步骤都会运行

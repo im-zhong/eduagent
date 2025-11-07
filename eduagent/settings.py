@@ -1,3 +1,4 @@
+import os
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -102,10 +103,21 @@ def new_settings(path: str | Path) -> Settings:
     return Settings(**data)
 
 
-def create_default_settings() -> Settings:
+def create_default_settings_ignore_env() -> Settings:
     if not defs.pathes.default_settings_file.exists():
         return Settings()
     return new_settings(defs.pathes.default_settings_file)
+
+
+def create_default_settings() -> Settings:
+    settings = create_default_settings_ignore_env()
+
+    # 为了支持CICD，如果环境中存在变量API_KEY, 就会直接覆盖配置文件
+    api_key_env = os.environ.get("API_KEY")
+
+    if api_key_env:
+        settings.llm.api_key = api_key_env
+    return settings
 
 
 # 全局配置实例
