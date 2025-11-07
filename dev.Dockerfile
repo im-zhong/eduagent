@@ -12,7 +12,7 @@ ARG USER
 # 只有安装了sudo 才有 /etc/sudoers的配置文件
 # Use ncat to forward git ssh traffic on keg server
 RUN apt update && \
-    apt install -y sudo curl ncat && \
+    apt install -y sudo curl ncat vim && \
     apt autoremove -y && \
     apt clean
 
@@ -23,6 +23,9 @@ RUN echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/10-nopasswd
 RUN useradd -u ${UID} -m ${USER} -s /bin/bash && \
     usermod -aG sudo ${USER}
 USER ${USER}
+
+# make vim to be the editor
+ENV EDITOR=vim
 
 # The RUN instruction will execute any commands to create a new layer on top of the current image.
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
