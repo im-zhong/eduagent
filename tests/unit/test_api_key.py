@@ -10,6 +10,7 @@ def test_api_key() -> None:
     """
     # Ensure key exists
     assert settings.llm.api_key, "API Key is not set!"
+    # print("API Key found:", settings.llm.api_key)
 
     # Initialize client
     client = zhipuai.ZhipuAI(api_key=settings.llm.api_key)

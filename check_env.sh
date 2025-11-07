@@ -158,6 +158,17 @@ else
     echo "✅ USER_ANTHROPIC_API_KEY 已设置"
 fi
 
+## 9. 检查是否存在配置文件，如果有则忽略，如果没有，那么就复制 example.eduagent.toml -> eduagent.toml
+# 并提醒修改配置文件
+CONFIG_FILE="eduagent.toml"
+EXAMPLE_CONFIG_FILE="example.eduagent.toml"
+if [ ! -f "$CONFIG_FILE" ]; then
+    cp "$EXAMPLE_CONFIG_FILE" "$CONFIG_FILE"
+    echo "⚠️ 警告: 未检测到 $CONFIG_FILE ，已从 $EXAMPLE_CONFIG_FILE 复制一份，请根据需要修改配置文件内容！"
+else
+    echo "✅ 检测到已有 $CONFIG_FILE ，跳过创建"
+fi
+
 ##############################################
 # 全部检查通过
 ##############################################
