@@ -71,6 +71,10 @@ async def test_document_repository_lifecycle(session: AsyncSession) -> None:
     assert len(artifacts) == 1
     assert chunks[0].milvus_vector_id == "vector-001"
 
+    reassigned = await repo.set_chunk_vector_id(chunk.id, vector_id="vector-002")
+    assert reassigned is not None
+    assert reassigned.milvus_vector_id == "vector-002"
+
 
 @pytest.mark.asyncio
 async def test_repository_handles_missing_job(session: AsyncSession) -> None:

@@ -93,6 +93,22 @@ class DocumentRepository:
         await self.session.refresh(chunk)
         return chunk
 
+    async def set_chunk_vector_id(
+        self,
+        chunk_id: str,
+        *,
+        vector_id: str | None,
+    ) -> DocumentChunk | None:
+        stmt = select(DocumentChunk).where(DocumentChunk.id == chunk_id)
+        result = await self.session.execute(stmt)
+        chunk = result.scalar_one_or_none()
+        if chunk is None:
+            return None
+        chunk.milvus_vector_id = vector_id
+        await self.session.commit()
+        await self.session.refresh(chunk)
+        return chunk
+
     async def list_chunks(self, job_id: str) -> Sequence[DocumentChunk]:
         stmt = (
             select(DocumentChunk)

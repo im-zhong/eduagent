@@ -9,6 +9,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from eduagent.documents.models import DocumentIngestionJob
 from eduagent.documents.repository import DocumentRepository
+from eduagent.llm.factory import get_embedding_model
+from eduagent.storage.milvus_store import (
+    EmbeddingRecord,
+    MilvusVectorStore,
+    milvus_store,
+)
 
 
 class DocxIngestionService:
@@ -92,3 +98,50 @@ class DocxIngestionService:
                 total_chunks=len(chunks),
             )
             return updated or job
+
+
+class EmbeddingBackend:
+    """Lightweight wrapper to make embedding dependencies swappable."""
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        model = get_embedding_model()
+        return model.embed_documents(texts)
+
+
+class ChunkEmbeddingService:
+    """Generates embeddings for chunks and indexes them in Milvus."""
+
+    def __init__(
+        self,
+        repository: DocumentRepository,
+        *,
+        vector_store: MilvusVectorStore | None = None,
+        embedder: EmbeddingBackend | None = None,
+    ) -> None:
+        self.repository = repository
+        self.vector_store = vector_store or milvus_store
+        self.embedder = embedder or EmbeddingBackend()
+
+    async def index_job_chunks(self, job_id: str) -> int:
+        chunks = await self.repository.list_chunks(job_id)
+        if not chunks:
+            return 0
+        texts = [chunk.content for chunk in chunks]
+        embeddings = self.embedder.embed_documents(texts)
+        if len(embeddings) != len(chunks):
+            msg = "Embedding backend returned mismatched vector count"
+            raise ValueError(msg)
+        records = [
+            EmbeddingRecord(
+                record_id=chunk.id,
+                text=chunk.content,
+                embedding=vector,
+                metadata=chunk.chunk_metadata,
+            )
+            for chunk, vector in zip(chunks, embeddings, strict=True)
+        ]
+        inserted = self.vector_store.insert_records(records)
+        for chunk in chunks:
+            await self.repository.set_chunk_vector_id(chunk.id, vector_id=chunk.id)
+        await self.repository.update_status(job_id, status="indexed")
+        return inserted
