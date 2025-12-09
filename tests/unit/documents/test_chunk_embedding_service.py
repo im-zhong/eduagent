@@ -81,6 +81,7 @@ async def test_chunk_embedding_service_indexes_vectors(session: AsyncSession) ->
     assert fake_store.records[0].record_id == chunk.id
     stored_chunks = await repo.list_chunks(job.id)
     assert stored_chunks[0].milvus_vector_id == chunk.id
+    assert fake_store.records[0].metadata["ingestion_job_id"] == job.id
 
 
 @pytest.mark.asyncio

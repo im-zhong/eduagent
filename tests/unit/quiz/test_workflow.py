@@ -44,8 +44,14 @@ class TestEmbeddingBackend(EmbeddingBackend):
 
 def test_quiz_workflow_generates_questions() -> None:
     hits = [
-        {"text": "Photosynthesis requires sunlight."},
-        {"text": "Chlorophyll captures light energy."},
+        {
+            "text": "Photosynthesis requires sunlight.",
+            "metadata": {"ingestion_job_id": "job-1"},
+        },
+        {
+            "text": "Chlorophyll captures light energy.",
+            "metadata": {"ingestion_job_id": "job-1"},
+        },
     ]
     llm = FakeLLM(
         '[{"prompt":"Explain photosynthesis","answer":"Plants convert light."}]'
@@ -58,7 +64,7 @@ def test_quiz_workflow_generates_questions() -> None:
         )
     )
 
-    result = workflow.run("biology photosynthesis")
+    result = workflow.run("biology photosynthesis", ingestion_job_id="job-1")
 
     assert "questions" in result
     assert len(result.get("questions") or []) == 1
@@ -67,7 +73,12 @@ def test_quiz_workflow_generates_questions() -> None:
 
 
 def test_quiz_workflow_handles_invalid_llm_output() -> None:
-    hits = [{"text": "The Ming dynasty built a vast navy."}]
+    hits = [
+        {
+            "text": "The Ming dynasty built a vast navy.",
+            "metadata": {"ingestion_job_id": "job-2"},
+        }
+    ]
     llm = FakeLLM("not-json")
     workflow = QuizGenerationWorkflow(
         QuizWorkflowConfig(
@@ -77,7 +88,7 @@ def test_quiz_workflow_handles_invalid_llm_output() -> None:
         )
     )
 
-    result = workflow.run("history ming")
+    result = workflow.run("history ming", ingestion_job_id="job-2")
 
     assert len(result.get("questions") or []) == 1
     answers = result.get("answers") or []
@@ -85,7 +96,7 @@ def test_quiz_workflow_handles_invalid_llm_output() -> None:
 
 
 def test_quiz_workflow_revision_loop() -> None:
-    hits = [{"text": "Short context."}]
+    hits = [{"text": "Short context.", "metadata": {"ingestion_job_id": "job-3"}}]
 
     class ShortAnswerLLM(FakeLLM):
         def invoke(self, _messages: list[Any]) -> FakeLLMResponse:
@@ -99,7 +110,7 @@ def test_quiz_workflow_revision_loop() -> None:
         )
     )
 
-    result = workflow.run("math topic")
+    result = workflow.run("math topic", ingestion_job_id="job-3")
 
     evaluation = result.get("evaluation") or {}
     assert evaluation.get("needs_revision") is True

@@ -140,7 +140,10 @@ class ChunkEmbeddingService:
                 record_id=chunk.id,
                 text=chunk.content,
                 embedding=vector,
-                metadata=chunk.chunk_metadata,
+                metadata={
+                    **chunk.chunk_metadata,
+                    "ingestion_job_id": chunk.ingestion_job_id,
+                },
             )
             for chunk, vector in zip(chunks, embeddings, strict=True)
         ]

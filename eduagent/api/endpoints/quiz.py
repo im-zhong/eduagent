@@ -13,12 +13,16 @@ from eduagent.api.schemas import (
     QuizGenerationRequest,
     QuizJobDetailResponse,
     QuizJobHandleResponse,
+    QuizWorkflowRequest,
+    QuizWorkflowResponse,
     SubjectArea,
 )
 from eduagent.defs import defs
+from eduagent.documents.repository import DocumentRepository
 from eduagent.quiz.enums import JobStatus, JobType
 from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.schemas import QuizJobDTO
+from eduagent.quiz.workflow import QuizWorkflowRunner
 from eduagent.storage.engine import get_async_session
 from eduagent.tasks.quiz import evaluate_answers, generate_quiz, process_textbook_upload
 
@@ -133,6 +137,27 @@ async def get_quiz_job(
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
         )
     return _detail_response(dto)
+
+
+@router.post(
+    "/workflow",
+    response_model=QuizWorkflowResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def run_quiz_workflow_endpoint(
+    request: QuizWorkflowRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> QuizWorkflowResponse:
+    doc_repo = DocumentRepository(session)
+    runner = QuizWorkflowRunner(doc_repo)
+    try:
+        result = await runner.run(request.ingestion_job_id, request.prompt)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    return QuizWorkflowResponse(**result)
 
 
 @router.post(

@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import START, StateGraph
 from typing_extensions import TypedDict
 
+from eduagent.documents.repository import DocumentRepository
 from eduagent.documents.services import EmbeddingBackend
 from eduagent.llm.factory import get_chat_model
 from eduagent.storage.milvus_store import MilvusVectorStore, milvus_store
@@ -19,6 +20,7 @@ class QuizGraphState(TypedDict, total=False):
     questions: list[dict[str, Any]]
     answers: list[dict[str, Any]]
     evaluation: dict[str, Any]
+    ingestion_job_id: str | None
 
 
 @dataclass
@@ -30,10 +32,17 @@ class QuizWorkflowConfig:
 
 
 MIN_ANSWER_LENGTH = 5
+INGESTION_METADATA_KEY = "ingestion_job_id"
 
 
 class GraphRunnable(Protocol):
     def invoke(self, state: QuizGraphState) -> QuizGraphState: ...
+
+
+class WorkflowLike(Protocol):
+    def run(
+        self, prompt: str, ingestion_job_id: str | None = None
+    ) -> QuizGraphState: ...
 
 
 class QuizGenerationWorkflow:
@@ -61,10 +70,32 @@ class QuizGenerationWorkflow:
 
     def _retrieve_context(self, state: QuizGraphState) -> QuizGraphState:
         prompt = state.get("prompt", "")
+        ingestion_job_id = state.get("ingestion_job_id")
         embedding = self.embedder.embed_query(prompt)
-        hits = self.vector_store.search(embedding, limit=self.config.retrieval_limit)  # type: ignore[arg-type]
-        context = [hit.get("text", "") for hit in hits if hit.get("text")]
-        return {"prompt": prompt, "context": context}
+        hits = cast(
+            list[dict[str, Any]],
+            self.vector_store.search(embedding, limit=self.config.retrieval_limit),  # type: ignore[arg-type]
+        )
+
+        def matches_job(hit: dict[str, Any]) -> bool:
+            metadata = cast(dict[str, Any] | None, hit.get("metadata"))
+            if not isinstance(metadata, dict):
+                return False
+            return metadata.get(INGESTION_METADATA_KEY) == ingestion_job_id
+
+        filtered_hits: list[dict[str, Any]] = [
+            hit for hit in hits if not ingestion_job_id or matches_job(hit)
+        ]
+        context: list[str] = []
+        for hit in filtered_hits:
+            text_value = hit.get("text")
+            if isinstance(text_value, str):
+                context.append(text_value)
+        return {
+            "prompt": prompt,
+            "context": context,
+            "ingestion_job_id": ingestion_job_id,
+        }
 
     def _generate_questions(self, state: QuizGraphState) -> QuizGraphState:
         context = "\n".join(state.get("context") or [])
@@ -137,8 +168,11 @@ class QuizGenerationWorkflow:
         }
         return {"evaluation": evaluation}
 
-    def run(self, prompt: str) -> QuizGraphState:
-        initial_state: QuizGraphState = {"prompt": prompt}
+    def run(self, prompt: str, ingestion_job_id: str | None = None) -> QuizGraphState:
+        initial_state: QuizGraphState = {
+            "prompt": prompt,
+            "ingestion_job_id": ingestion_job_id,
+        }
         return self.graph.invoke(initial_state)
 
 
@@ -152,3 +186,35 @@ class _CompiledGraph(GraphRunnable):
             error_msg = "Compiled graph returned invalid state"
             raise TypeError(error_msg)
         return cast(QuizGraphState, result)
+
+
+@dataclass
+class QuizWorkflowRunner:
+    repository: DocumentRepository
+    workflow: WorkflowLike | None = None
+
+    def __post_init__(self) -> None:
+        if self.workflow is None:
+            self.workflow = QuizGenerationWorkflow()
+
+    async def run(self, ingestion_job_id: str, prompt: str) -> dict[str, Any]:
+        ingestion_job = await self.repository.get_job(ingestion_job_id)
+        if ingestion_job is None:
+            error_msg = "Ingestion job not found"
+            raise ValueError(error_msg)
+        workflow: WorkflowLike = self.workflow or QuizGenerationWorkflow()
+        self.workflow = workflow
+        result = workflow.run(prompt, ingestion_job_id=ingestion_job_id)
+        artifact = await self.repository.add_artifact(
+            ingestion_job_id,
+            artifact_type="quiz_workflow",
+            payload=dict(result),
+        )
+        if artifact is None:
+            error_msg = "Failed to persist quiz artifact"
+            raise RuntimeError(error_msg)
+        return {
+            "artifact_id": artifact.id,
+            "ingestion_job_id": ingestion_job_id,
+            **result,
+        }

@@ -280,6 +280,27 @@ class QuizEvaluationResponse(BaseModel):
     details: list[dict[str, Any]]
 
 
+def _empty_question_list() -> list[dict[str, Any]]:
+    return []
+
+
+def _empty_answer_list() -> list[dict[str, Any]]:
+    return []
+
+
+class QuizWorkflowRequest(BaseModel):
+    ingestion_job_id: str
+    prompt: str = Field(..., min_length=3, description="Instruction for workflow")
+
+
+class QuizWorkflowResponse(BaseModel):
+    artifact_id: str
+    ingestion_job_id: str
+    questions: list[dict[str, Any]] = Field(default_factory=_empty_question_list)
+    answers: list[dict[str, Any]] = Field(default_factory=_empty_answer_list)
+    evaluation: dict[str, Any] = Field(default_factory=dict)
+
+
 # ============ User & Platform Management Schemas ============
 class UserCreateRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
