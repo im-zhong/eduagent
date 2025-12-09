@@ -4,9 +4,11 @@
 #   - https://docs.docker.com/reference/compose-file/services/#build
 #   - https://docs.docker.com/reference/compose-file/build/
 
+# 因为在这里已经存在了
 name: eduagent-${USER}
 
 services:
+  # TODO: 这些名字里面的eduagent重复了
   eduagent-dev:
     build:
       context: .
@@ -70,6 +72,8 @@ services:
     depends_on:
       - eduagent-db
       - eduagent-redis
+      - eduagent-rabbitmq
+      # - eduagent-milvus
 
   eduagent-db:
     image: pgvector/pgvector:pg17
@@ -95,6 +99,137 @@ services:
       - 6379
     networks:
       - eduagent-network
+
+  eduagent-rabbitmq:
+    image: rabbitmq:4.2-management
+    hostname: rabbitmq.eduagent
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-eduagent}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-eduagent}
+    expose:
+      - 5672
+      - 15672
+    networks:
+      - eduagent-network
+    volumes:
+      - ./data/rabbitmq:/var/lib/rabbitmq
+
+  etcd:
+    # container_name: etcd.eduagent
+    hostname: milvus-etcd
+    # https://etcd.io/docs/v3.6/op-guide/kubernetes/
+    # 还真是从etcd的官方文档中可以找到这个, dockerhub还真没有官方etcd，神奇！
+    image: quay.io/coreos/etcd:v3.6.6
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - eduagent-network
+
+  minio:
+    # container_name: minio.eduagent
+    hostname: milvus-minio
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    expose:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - eduagent-network
+
+  standalone:
+    # container_name: milvus.eduagent
+    hostname: milvus-standalone
+    image: milvusdb/milvus:v2.6.6
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MQ_TYPE: woodpecker
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    expose:
+      - "19530:19530" # 这个端口是client来连接的端口
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+    networks:
+      - eduagent-network
+
+  # https://hub.docker.com/r/zilliz/attu
+  # https://github.com/zilliztech/attu
+  # ---- Milvus Web UI (Attu) ----
+  # 连接方式：localhost:8000
+  attu:
+    # container_name: attu
+    hostname: attu.eduagent
+    image: zilliz/attu:v2.6.3
+    environment:
+      # Attu needs to see Milvus by its container name on the docker network
+      - MILVUS_URL=milvus-standalone:19530
+    # expose:
+    #   - "8000:3000" # host:container
+    expose:
+      - "3000" # host:container
+    depends_on:
+      - "standalone"
+    # (optional) simple healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - eduagent-network
+
+  eduagent-celery-worker:
+    image: eduagent:${USER}
+    command:
+      - celery
+      - -A
+      - eduagent.tasks.app.celery_app
+      - worker
+      - -l
+      - info
+    hostname: celery.eduagent
+    restart: unless-stopped
+    volumes:
+      - .:/home/${USER}/eduagent
+    networks:
+      - eduagent-network
+    depends_on:
+      - eduagent-rabbitmq
+      - eduagent-db
 
   # 容器监控 - 收集 Docker 容器指标
   # cadvisor:

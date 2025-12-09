@@ -182,3 +182,6 @@ eduagent.toml
 # claude configuration files
 .claude/
 .claude.json
+
+# docker volume
+volumes/
