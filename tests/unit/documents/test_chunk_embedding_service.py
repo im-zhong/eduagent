@@ -46,6 +46,10 @@ class FakeEmbeddingBackend(EmbeddingBackend):
             return self.vectors
         return [[float(i)] * 3 for i in range(len(texts))]
 
+    def embed_query(self, text: str) -> list[float]:
+        token_count = len(text.split())
+        return [float(token_count)] * 3  # pragma: no cover - unused
+
 
 @pytest.mark.asyncio
 async def test_chunk_embedding_service_indexes_vectors(session: AsyncSession) -> None:

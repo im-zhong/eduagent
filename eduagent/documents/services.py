@@ -107,6 +107,10 @@ class EmbeddingBackend:
         model = get_embedding_model()
         return model.embed_documents(texts)
 
+    def embed_query(self, text: str) -> list[float]:
+        model = get_embedding_model()
+        return model.embed_query(text)
+
 
 class ChunkEmbeddingService:
     """Generates embeddings for chunks and indexes them in Milvus."""

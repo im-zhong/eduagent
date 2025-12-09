@@ -39,6 +39,10 @@ class DeterministicEmbeddingBackend(EmbeddingBackend):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [[float(idx)] * 3 for idx, _ in enumerate(texts, start=1)]
 
+    def embed_query(self, text: str) -> list[float]:
+        _ = text
+        return [1.0] * 3
+
 
 @pytest_asyncio.fixture
 async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
