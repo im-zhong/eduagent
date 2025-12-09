@@ -185,3 +185,5 @@ eduagent.toml
 
 # docker volume
 volumes/
+
+*.jsonl
