@@ -27,6 +27,12 @@ class Pathes:
     def example_settings_file(self) -> Path:
         return Path("example.eduagent.toml")
 
+    @property
+    def uploads_dir(self) -> Path:
+        path = Path("data") / "uploads"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
 
 class APIDefs:
     """API endpoint definitions for EduAgent system"""

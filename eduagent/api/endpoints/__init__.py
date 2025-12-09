@@ -3,6 +3,7 @@ from .assessment import router as assessment_router
 from .exercises import router as exercises_router
 from .knowledge import router as knowledge_router
 from .questions import router as questions_router
+from .quiz import router as quiz_router
 from .users import router as users_router  # << 1. 导入 users_router
 
 # Include all routers
@@ -12,6 +13,7 @@ api_routers = [
     exercises_router,
     knowledge_router,
     questions_router,
+    quiz_router,
     users_router,  # << 2. 将 users_router 添加到列表中
 ]
 

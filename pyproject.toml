@@ -45,7 +45,8 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-norecursedirs = ["data", ".git", ".venv", "dist", "build", "node_modules"]
+# norecursedirs = ["data", ".git", ".venv", "dist", "build", "node_modules"]
+testpaths = ["tests"] # only detect tests on the tests dir
 asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests (requires external services)",

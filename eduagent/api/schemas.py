@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from eduagent.quiz.enums import JobStatus, JobType
+
 
 class DifficultyLevel(str, Enum):
     EASY = "easy"
@@ -197,6 +199,85 @@ class FeedbackResponse(BaseModel):
     detailed_feedback: str
     suggestions: list[str]
     recommended_practice: list[str]
+
+
+# ============ Quiz Pipeline Schemas ============
+class QuizJobHandleResponse(BaseModel):
+    job_id: str
+    job_type: JobType
+    status: JobStatus
+    task_id: str | None = None
+
+
+class QuizJobDetailResponse(QuizJobHandleResponse):
+    parent_job_id: str | None = None
+    subject: SubjectArea | None = None
+    grade_level: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] = Field(default_factory=dict)
+    error_message: str | None = None
+
+
+def _create_difficulty_distribution() -> dict[DifficultyLevel, int]:
+    return {}
+
+
+def _create_question_type_preferences() -> list[QuestionType]:
+    return []
+
+
+class QuizGenerationRules(BaseModel):
+    total_questions: int = Field(default=5, ge=1, le=50)
+    primary_difficulty: DifficultyLevel = Field(
+        default=DifficultyLevel.MEDIUM, description="Overall quiz difficulty"
+    )
+    difficulty_distribution: dict[DifficultyLevel, int] = Field(
+        default_factory=_create_difficulty_distribution,
+        description="Optional distribution per difficulty level",
+    )
+    question_types: list[QuestionType] = Field(
+        default_factory=_create_question_type_preferences,
+        description="Preferred question types",
+    )
+    include_explanations: bool = True
+    allow_distractors: bool = True
+
+
+def _create_default_quiz_rules() -> QuizGenerationRules:
+    return QuizGenerationRules()
+
+
+class QuizGenerationRequest(BaseModel):
+    ingestion_job_id: str = Field(..., description="Completed ingestion job id")
+    subject: SubjectArea | None = Field(
+        default=None, description="Override subject from ingestion"
+    )
+    query: str | None = Field(
+        default=None, description="Optional guiding instructions for quiz generation"
+    )
+    quiz_rules: QuizGenerationRules = Field(
+        default_factory=_create_default_quiz_rules, description="Quiz generation rules"
+    )
+
+
+class QuizAnswerItem(BaseModel):
+    question_id: str
+    answer: str
+    is_correct: bool | None = Field(
+        default=None, description="Optional correctness annotation"
+    )
+    reasoning: str | None = None
+
+
+class QuizEvaluationRequest(BaseModel):
+    quiz_job_id: str = Field(..., description="Completed quiz generation job id")
+    answers: list[QuizAnswerItem]
+
+
+class QuizEvaluationResponse(BaseModel):
+    score: float
+    total: int
+    details: list[dict[str, Any]]
 
 
 # ============ User & Platform Management Schemas ============
