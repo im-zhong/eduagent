@@ -22,3 +22,10 @@ db = 0
 
 [api]
 secret_key = "a-very-secret-key-that-should-be-changed"
+
+[service_auth]
+secret_key = "change_me_service_secret"
+issuer = "nextjs-service"
+audience = "eduagent-api"
+algorithm = "HS256"
+leeway_seconds = 10

@@ -2,9 +2,10 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from eduagent.api.security import require_service_token
 from eduagent.logger import get_logger
 from eduagent.storage.engine import async_engine
 from eduagent.user.models import Base
@@ -50,10 +51,17 @@ api.add_middleware(
 )
 
 # 4. 采用主分支的循环方式注册所有 API 路由
+security_dependencies = [Depends(require_service_token)]
+
 for router in api_routers:
     # 你的 users_router 应该有自己的 tags，这里统一为 "AI Education Services"
     # 如果需要为 users_router 设置不同的 tag, 你需要在 endpoints/users.py 中定义好
-    api.include_router(router, prefix="/api/v1", tags=["AI Education Services"])
+    api.include_router(
+        router,
+        prefix="/api/v1",
+        tags=["AI Education Services"],
+        dependencies=security_dependencies,
+    )
 
 
 @api.get("/", include_in_schema=False)

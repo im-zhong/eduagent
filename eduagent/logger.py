@@ -2,10 +2,26 @@
 # https://loguru.readthedocs.io/en/stable/overview.html
 from __future__ import annotations
 
-from loguru import Logger
+from typing import Protocol, cast
+
 from loguru import logger as loguru_logger
 
 from eduagent.defs import defs
+
+
+class LoggerProtocol(Protocol):
+    def bind(self, **kwargs: object) -> LoggerProtocol: ...
+
+    def info(self, __message: object, /, *args: object, **kwargs: object) -> None: ...
+
+    def debug(self, __message: object, /, *args: object, **kwargs: object) -> None: ...
+
+    def warning(
+        self, __message: object, /, *args: object, **kwargs: object
+    ) -> None: ...
+
+
+Logger = LoggerProtocol
 
 
 def new_logger() -> Logger:
@@ -27,7 +43,7 @@ def new_logger() -> Logger:
         encoding="utf-8",
         format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}",
     )
-    return loguru_logger
+    return cast(Logger, loguru_logger)
 
 
 _APP_LOGGER: Logger = new_logger()

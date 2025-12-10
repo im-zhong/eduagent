@@ -7,8 +7,6 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "aiosqlite>=0.20.0",
     "fastapi>=0.116.1",
-    "fastapi-users[sqlalchemy,redis]",
-    "SQLAlchemy-Utils>=0.41.1",
     "asyncpg>=0.29.0",
     "PyJWT>=2.8.0",
     "httpx>=0.28.1",

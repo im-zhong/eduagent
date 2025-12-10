@@ -1,4 +1,3 @@
-import os
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -125,6 +124,16 @@ class CeleryConfig(BaseModel):
     result_expires: int = 3600
 
 
+class ServiceAuthConfig(BaseModel):
+    """Service-to-service authentication settings."""
+
+    secret_key: str = "change_me_service_secret"
+    issuer: str = "nextjs-service"
+    audience: str = "eduagent-api"
+    algorithm: str = "HS256"
+    leeway_seconds: int = Field(default=10, ge=0)
+
+
 # --- 总的 Settings 类 ---
 class Settings(BaseModel):
     """
@@ -141,6 +150,7 @@ class Settings(BaseModel):
     milvus: MilvusConfig = Field(default_factory=MilvusConfig)
     minio: MinioConfig = Field(default_factory=MinioConfig)
     celery: CeleryConfig = Field(default_factory=CeleryConfig)
+    service_auth: ServiceAuthConfig = Field(default_factory=ServiceAuthConfig)
 
     def model_post_init(self, __context: object, /) -> None:
         if not self.celery.broker_url:
@@ -169,14 +179,7 @@ def create_default_settings_ignore_env() -> Settings:
 
 
 def create_default_settings() -> Settings:
-    settings = create_default_settings_ignore_env()
-
-    # 为了支持CICD，如果环境中存在变量API_KEY, 就会直接覆盖配置文件
-    api_key_env = os.environ.get("API_KEY")
-
-    if api_key_env:
-        settings.llm.api_key = api_key_env
-    return settings
+    return create_default_settings_ignore_env()
 
 
 # 全局配置实例
