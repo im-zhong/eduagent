@@ -39,6 +39,9 @@ services:
       # mapping the claude conf file, so we do not need to login again and again
       - ./.claude:/home/${USER}/.claude
       - ./.claude.json:/home/${USER}/.claude.json
+      # for chatgpt codex
+      # 改了volumes之后，只需要vscode dev container rebuild一下就可以了
+      - ~/.codex:/home/${USER}/.codex
     networks:
       - eduagent-network
     depends_on:

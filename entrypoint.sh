@@ -51,7 +51,7 @@ case "$1" in
         exec uv run uvicorn eduagent.api:api \
             --host "0.0.0.0" \
             --port 8000 \
-            --log-level info
+            --log-level info \
             --reload
             # --reload-dir eduagent \
             # --reload-exclude 'data/*'

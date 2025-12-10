@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from shutil import copyfileobj
 from typing import Annotated, Any, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
@@ -18,7 +17,6 @@ from eduagent.api.schemas import (
     QuizWorkflowResponse,
     SubjectArea,
 )
-from eduagent.defs import defs
 from eduagent.documents.repository import DocumentRepository
 from eduagent.logger import get_logger
 from eduagent.quiz.enums import JobStatus, JobType
@@ -26,6 +24,7 @@ from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.schemas import QuizJobDTO
 from eduagent.quiz.workflow import QuizWorkflowRunner
 from eduagent.storage.engine import get_async_session
+from eduagent.storage.minio_service import minio_service
 from eduagent.tasks.quiz import (
     evaluate_answers,
     generate_quiz,
@@ -93,35 +92,41 @@ async def upload_textbook_for_quiz(
     api_logger.info(
         f"Received quiz upload request subject={subject.value} grade={grade_level}"
     )
-    destination_dir = defs.pathes.uploads_dir
-    destination_dir.mkdir(parents=True, exist_ok=True)
-    unique_prefix = uuid4()
     original_filename = file.filename or "uploaded_textbook"
-    stored_path = destination_dir / f"{unique_prefix}_{original_filename}"
-    with stored_path.open("wb") as buffer:
-        copyfileobj(file.file, buffer)
+    stored_object = minio_service.store_file(
+        file.file,
+        filename=original_filename,
+        content_type=file.content_type,
+        metadata={
+            "subject": subject.value,
+            "grade_level": grade_level,
+            "uuid": uuid4().hex,
+        },
+    )
 
     repo = QuizJobRepository(session)
     job = await repo.create_ingestion_job(
         source_filename=original_filename,
-        file_path=str(stored_path),
+        file_path=f"minio://{stored_object.bucket}/{stored_object.object_name}",
         subject=subject.value,
         grade_level=grade_level,
         payload={
             "content_type": file.content_type,
             "subject": subject.value,
             "grade_level": grade_level,
+            "object_id": stored_object.object_id,
         },
     )
     upload_task = cast(SupportsDelay, process_textbook_upload)
     task = upload_task.delay(
         job.id,
-        str(stored_path),
+        stored_object.object_id,
         {
             "subject": subject.value,
             "grade_level": grade_level,
             "filename": original_filename,
             "content_type": file.content_type,
+            "object_id": stored_object.object_id,
         },
     )
     await repo.set_task_id(job.id, _extract_task_id(task))

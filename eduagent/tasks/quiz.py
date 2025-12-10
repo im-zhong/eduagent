@@ -7,6 +7,8 @@ from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from logging import Logger
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from celery.utils.log import (
@@ -25,6 +27,7 @@ from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.scoring import QuizScoringService
 from eduagent.storage.engine import async_session_maker
 from eduagent.storage.milvus_store import MilvusVectorStore, milvus_store
+from eduagent.storage.minio_service import minio_service
 
 from .app import celery_app
 
@@ -103,18 +106,22 @@ async def run_textbook_ingestion_pipeline(
 
 @celery_app.task(name="eduagent.quiz.process_upload")
 def process_textbook_upload(
-    job_id: str, file_path: str, metadata: dict[str, Any]
+    job_id: str, object_id: str, metadata: dict[str, Any]
 ) -> dict[str, Any]:
     """Parse textbook, chunk content and populate vector store."""
 
     async def _run() -> dict[str, Any]:
         try:
             milvus_store.ensure_collection()
-            return await run_textbook_ingestion_pipeline(
-                job_id,
-                file_path,
-                metadata,
-            )
+            with TemporaryDirectory() as tmp_dir:
+                filename = metadata.get("filename") or f"{object_id}.docx"
+                download_path = Path(tmp_dir) / filename
+                minio_service.download_to_path(object_id, download_path)
+                return await run_textbook_ingestion_pipeline(
+                    job_id,
+                    str(download_path),
+                    metadata,
+                )
         except Exception:  # pragma: no cover - log and re-raise
             task_logger.exception("Textbook upload job %s failed", job_id)
             raise
