@@ -13,8 +13,10 @@ from eduagent.api.schemas import (
     PerformanceAnalyticsResponse,
     QuestionGenerationRequest,
 )
+from eduagent.logger import get_logger
 
 router = APIRouter()
+api_logger = get_logger(__name__, component="api.analytics")
 
 
 @router.post("/analytics/performance")
@@ -24,8 +26,9 @@ async def get_performance_analytics(
     """
     Get performance analytics for students or classes
     """
-    # Mock implementation
-    _ = request  # Avoid unused variable warning
+    api_logger.info(
+        f"Performance analytics requested student={request.student_id} class={request.class_id}"
+    )
     return PerformanceAnalyticsResponse(
         overall_accuracy=0.75,
         total_attempts=100,
@@ -41,8 +44,9 @@ async def analyze_mistakes(request: MistakeAnalysisRequest) -> MistakeAnalysisRe
     """
     Analyze mistake patterns and provide remediation suggestions
     """
-    # Mock implementation
-    _ = request  # Avoid unused variable warning
+    api_logger.info(
+        f"Mistake analysis requested student={request.student_id} kp={request.knowledge_point_id}"
+    )
     return MistakeAnalysisResponse(
         mistake_patterns=[
             {"pattern": "conceptual_error", "frequency": 15},
@@ -64,7 +68,9 @@ async def get_class_analytics(
     """
     Get analytics for entire class
     """
-    # Mock implementation
+    api_logger.info(
+        f"Class analytics requested class_id={class_id} period={time_period}"
+    )
     return {
         "class_id": class_id,
         "average_accuracy": 0.68,
@@ -79,6 +85,7 @@ async def health_check() -> HealthCheckResponse:
     """
     System health check endpoint
     """
+    api_logger.debug("Analytics health check requested")
     return HealthCheckResponse(
         status="healthy",
         version="1.0.0",
@@ -98,7 +105,7 @@ async def batch_generate_questions(
     """
     Batch generate questions for multiple knowledge points
     """
-    # Mock implementation
+    api_logger.info(f"Batch question generation requested count={len(requests)}")
     return BatchOperationResponse(
         operation_id=str(uuid.uuid4()),
         status="processing",
@@ -114,4 +121,5 @@ async def trigger_error() -> dict[str, str]:
     """
     Example error endpoint for testing
     """
+    api_logger.warning("Trigger error endpoint invoked for diagnostics")
     raise HTTPException(status_code=400, detail="Sample error for testing")

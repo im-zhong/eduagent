@@ -12,8 +12,10 @@ from eduagent.api.schemas import (
     QuestionGenerationRequest,
     QuestionGenerationResponse,
 )
+from eduagent.logger import get_logger
 
 router = APIRouter()
+api_logger = get_logger(__name__, component="api.questions")
 
 
 @router.post("/questions/generate")
@@ -23,7 +25,9 @@ async def generate_questions(
     """
     Generate educational questions based on knowledge points and constraints
     """
-    # Mock implementation
+    api_logger.info(
+        f"Question generation requested type={request.question_type} difficulty={request.difficulty}"
+    )
     sample_question = GeneratedQuestion(
         id=str(uuid.uuid4()),
         question_text="Sample generated question",
@@ -52,7 +56,9 @@ async def control_question_difficulty(
     """
     Adjust question difficulty based on educational constraints
     """
-    # Mock implementation
+    api_logger.info(
+        f"Difficulty control requested difficulty={request.target_difficulty} text_length={len(request.question_text)}"
+    )
     return DifficultyControlResponse(
         adjusted_question=request.question_text,
         difficulty_score=0.7,
@@ -68,8 +74,9 @@ async def generate_distractors(
     """
     Generate cognitively appropriate distractors for multiple choice questions
     """
-    # Mock implementation
-    _ = question_text, knowledge_point_id  # Avoid unused variable warnings
+    api_logger.info(
+        f"Distractor generation requested kp={knowledge_point_id} text_length={len(question_text)}"
+    )
     return {
         "distractors": [
             {"text": "Common mistake 1", "mistake_pattern": "conceptual_error"},

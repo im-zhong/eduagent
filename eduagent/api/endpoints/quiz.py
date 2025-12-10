@@ -20,6 +20,7 @@ from eduagent.api.schemas import (
 )
 from eduagent.defs import defs
 from eduagent.documents.repository import DocumentRepository
+from eduagent.logger import get_logger
 from eduagent.quiz.enums import JobStatus, JobType
 from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.schemas import QuizJobDTO
@@ -49,6 +50,7 @@ def _extract_task_id(result: AsyncResult) -> str:
 
 
 router = APIRouter(prefix="/quiz", tags=["Quiz Pipeline"])
+api_logger = get_logger(__name__, component="api.quiz")
 
 
 def _handle_response(dto: QuizJobDTO) -> QuizJobHandleResponse:
@@ -88,6 +90,9 @@ async def upload_textbook_for_quiz(
 ) -> QuizJobHandleResponse:
     """Upload a textbook/document for asynchronous ingestion."""
 
+    api_logger.info(
+        f"Received quiz upload request subject={subject.value} grade={grade_level}"
+    )
     destination_dir = defs.pathes.uploads_dir
     destination_dir.mkdir(parents=True, exist_ok=True)
     unique_prefix = uuid4()
@@ -123,6 +128,7 @@ async def upload_textbook_for_quiz(
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover - safety guard
         raise HTTPException(status_code=500, detail="Failed to create ingestion job")
+    api_logger.info(f"Queued ingestion job {job.id} for {original_filename}")
     return _handle_response(dto)
 
 
@@ -139,9 +145,11 @@ async def get_quiz_job(
     job = await repo.get_job(job_id)
     dto = await repo.to_dto(job)
     if dto is None:
+        api_logger.warning(f"Quiz job {job_id} not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
         )
+    api_logger.debug(f"Returning quiz job details for {job_id}")
     return _detail_response(dto)
 
 
@@ -159,10 +167,14 @@ async def run_quiz_workflow_endpoint(
     try:
         result = await runner.run(request.ingestion_job_id, request.prompt)
     except ValueError as exc:
+        api_logger.warning(
+            f"Workflow run failed for ingestion job {request.ingestion_job_id}: {exc}"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    api_logger.info(f"Workflow completed for ingestion job {request.ingestion_job_id}")
     return QuizWorkflowResponse(**result)
 
 
@@ -178,15 +190,24 @@ async def request_quiz_generation(
     repo = QuizJobRepository(session)
     ingestion_job = await repo.get_job(request.ingestion_job_id)
     if ingestion_job is None:
+        api_logger.warning(
+            f"Quiz generation requested for missing ingestion job {request.ingestion_job_id}"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ingestion job not found"
         )
     if JobType(ingestion_job.job_type) != JobType.INGESTION:
+        api_logger.warning(
+            f"Invalid job type for generation request {request.ingestion_job_id}"
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provided job is not an ingestion job",
         )
     if JobStatus(ingestion_job.status) != JobStatus.COMPLETED:
+        api_logger.warning(
+            f"Generation requested before completion for job {request.ingestion_job_id}"
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ingestion job has not completed",
@@ -203,6 +224,9 @@ async def request_quiz_generation(
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover
         raise HTTPException(status_code=500, detail="Failed to create quiz job")
+    api_logger.info(
+        f"Queued quiz generation job {job.id} from ingestion job {request.ingestion_job_id}"
+    )
     return _handle_response(dto)
 
 
@@ -218,15 +242,24 @@ async def request_quiz_evaluation(
     repo = QuizJobRepository(session)
     quiz_job = await repo.get_job(request.quiz_job_id)
     if quiz_job is None:
+        api_logger.warning(
+            f"Evaluation requested for missing quiz job {request.quiz_job_id}"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Quiz job not found"
         )
     if JobType(quiz_job.job_type) != JobType.QUIZ_GENERATION:
+        api_logger.warning(
+            f"Evaluation request {request.quiz_job_id} is not a generation job"
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provided job is not a quiz generation job",
         )
     if JobStatus(quiz_job.status) != JobStatus.COMPLETED:
+        api_logger.warning(
+            f"Evaluation requested before completion for quiz job {request.quiz_job_id}"
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Quiz generation job has not completed",
@@ -243,6 +276,9 @@ async def request_quiz_evaluation(
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover
         raise HTTPException(status_code=500, detail="Failed to create evaluation job")
+    api_logger.info(
+        f"Queued quiz evaluation job {job.id} for quiz job {request.quiz_job_id}"
+    )
     return _handle_response(dto)
 
 
@@ -258,6 +294,9 @@ async def request_quiz_scoring(
     repo = QuizJobRepository(session)
     quiz_job = await repo.get_job(request.quiz_job_id)
     if quiz_job is None:
+        api_logger.warning(
+            f"Scoring requested for missing quiz job {request.quiz_job_id}"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Quiz job not found"
         )
@@ -271,4 +310,7 @@ async def request_quiz_scoring(
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover
         raise HTTPException(status_code=500, detail="Failed to create scoring job")
+    api_logger.info(
+        f"Queued quiz scoring job {job.id} for quiz job {request.quiz_job_id}"
+    )
     return _handle_response(dto)

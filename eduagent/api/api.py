@@ -5,11 +5,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from eduagent.logger import get_logger
 from eduagent.storage.engine import async_engine
 from eduagent.user.models import Base
 
 # --------------------
 from .endpoints import api_routers
+
+api_logger = get_logger(__name__, component="api.core")
 
 
 # 2. 保留你的 lifespan 函数，用于应用启动时创建数据库表
@@ -18,10 +21,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
     在应用启动时, 创建数据库表
     """
+    api_logger.info("Initializing API database schema")
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    api_logger.info("API startup complete")
     yield
     # 应用关闭时的清理工作（如果需要）
+    api_logger.info("API shutdown sequence completed")
 
 
 # Create FastAPI application
@@ -52,6 +58,7 @@ for router in api_routers:
 
 @api.get("/", include_in_schema=False)
 async def root() -> dict[str, str]:
+    api_logger.debug("Root endpoint requested")
     return {
         "message": "EduAgent AI Question Generation API",
         "version": "1.0.0",
@@ -61,4 +68,5 @@ async def root() -> dict[str, str]:
 
 @api.get("/health", include_in_schema=False)
 async def health_check() -> dict[str, str]:
+    api_logger.debug("Health check endpoint requested")
     return {"status": "healthy", "service": "eduagent-api"}

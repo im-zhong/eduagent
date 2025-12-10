@@ -15,6 +15,7 @@ import uuid
 from fastapi import APIRouter
 from fastapi_users import FastAPIUsers
 
+from eduagent.logger import get_logger
 from eduagent.user.auth import auth_backend
 from eduagent.user.manager import get_user_manager
 from eduagent.user.models import User
@@ -27,6 +28,7 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
 
 # 主路由
 router = APIRouter()
+api_logger = get_logger(__name__, component="api.users")
 
 # 认证路由 (登录, 登出)
 router.include_router(
@@ -34,6 +36,7 @@ router.include_router(
     prefix="/auth/jwt",
     tags=["auth"],
 )
+api_logger.info("Registered JWT auth routes")
 
 # 注册路由
 router.include_router(
@@ -41,6 +44,7 @@ router.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+api_logger.info("Registered user registration routes")
 
 # 密码重置路由
 router.include_router(
@@ -48,6 +52,7 @@ router.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+api_logger.info("Registered password reset routes")
 
 # 邮箱验证路由
 router.include_router(
@@ -55,6 +60,7 @@ router.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+api_logger.info("Registered email verification routes")
 
 # 用户管理路由
 router.include_router(
@@ -62,3 +68,4 @@ router.include_router(
     prefix="/users",
     tags=["users"],
 )
+api_logger.info("Registered user management routes")

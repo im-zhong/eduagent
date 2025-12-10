@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any, cast
 
-from loguru import logger
 from pydantic import BaseModel, Field
 from pymilvus import (
     Collection,
@@ -18,6 +17,7 @@ from pymilvus import (
     utility as milvus_utility,
 )
 
+from eduagent.logger import get_logger
 from eduagent.settings import MilvusConfig, settings
 
 _MILVUS_CONNECTIONS = cast(Any, milvus_connections)
@@ -49,7 +49,7 @@ class MilvusVectorStore:
         existing_connections = cast(list[str], _MILVUS_CONNECTIONS.list_connections())
         if self.alias in existing_connections:
             return
-        logger.info("Connecting to Milvus at %s:%s", self.config.host, self.config.port)
+        logger.info(f"Connecting to Milvus at {self.config.host}:{self.config.port}")
         _MILVUS_CONNECTIONS.connect(
             alias=self.alias,
             host=self.config.host,
@@ -65,7 +65,7 @@ class MilvusVectorStore:
             _MILVUS_UTILITY.has_collection(self.collection_name, using=self.alias)
         )
         if not has_collection:
-            logger.info("Creating Milvus collection %s", self.collection_name)
+            logger.info(f"Creating Milvus collection {self.collection_name}")
             fields = [
                 FieldSchema(
                     name="id",
@@ -157,3 +157,4 @@ class MilvusVectorStore:
 
 
 milvus_store = MilvusVectorStore()
+logger = get_logger(__name__, component="milvus")

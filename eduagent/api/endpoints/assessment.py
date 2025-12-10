@@ -7,8 +7,10 @@ from eduagent.api.schemas import (
     FeedbackRequest,
     FeedbackResponse,
 )
+from eduagent.logger import get_logger
 
 router = APIRouter()
+api_logger = get_logger(__name__, component="api.assessment")
 
 
 @router.post("/assessment/evaluate")
@@ -16,7 +18,9 @@ async def evaluate_answers(request: AssessmentRequest) -> AssessmentResponse:
     """
     Evaluate student answers and provide detailed assessment
     """
-    # Mock implementation
+    api_logger.info(
+        f"Assessment evaluate request student={request.student_id} submissions={len(request.submissions)}"
+    )
     results = [
         AssessmentResult(
             question_id=submission.question_id,
@@ -44,8 +48,9 @@ async def provide_feedback(request: FeedbackRequest) -> FeedbackResponse:
     """
     Provide detailed feedback on student answers
     """
-    # Mock implementation
-    _ = request  # Avoid unused variable warning
+    api_logger.info(
+        f"Feedback request kp={request.knowledge_point_id} answer_length={len(request.student_answer)}"
+    )
     return FeedbackResponse(
         score=0.8,
         detailed_feedback="Good attempt with minor errors",

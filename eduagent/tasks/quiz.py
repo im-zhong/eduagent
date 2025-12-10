@@ -6,9 +6,12 @@ import asyncio
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
+from logging import Logger
 from typing import Any
 
-from loguru import logger
+from celery.utils.log import (
+    get_task_logger,  # pyright: ignore[reportUnknownVariableType]
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from eduagent.documents.repository import DocumentRepository
@@ -24,6 +27,8 @@ from eduagent.storage.engine import async_session_maker
 from eduagent.storage.milvus_store import MilvusVectorStore, milvus_store
 
 from .app import celery_app
+
+task_logger: Logger = get_task_logger(__name__)
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
@@ -111,7 +116,7 @@ def process_textbook_upload(
                 metadata,
             )
         except Exception:  # pragma: no cover - log and re-raise
-            logger.exception("Textbook upload job %s failed", job_id)
+            task_logger.exception("Textbook upload job %s failed", job_id)
             raise
 
     return asyncio.run(_run())
@@ -137,7 +142,7 @@ def generate_quiz(job_id: str, payload: dict[str, Any]) -> dict[str, Any]:
             ]
             result = {"questions": questions, "rules": rules}
         except Exception as exc:  # pragma: no cover
-            logger.exception("Quiz generation job %s failed", job_id)
+            task_logger.exception("Quiz generation job %s failed", job_id)
             await _update_job_status(job_id, JobStatus.FAILED, error=str(exc))
             raise
         else:
@@ -162,7 +167,7 @@ def evaluate_answers(job_id: str, payload: dict[str, Any]) -> dict[str, Any]:
                 "details": answers,
             }
         except Exception as exc:  # pragma: no cover
-            logger.exception("Quiz evaluation job %s failed", job_id)
+            task_logger.exception("Quiz evaluation job %s failed", job_id)
             await _update_job_status(job_id, JobStatus.FAILED, error=str(exc))
             raise
         else:
@@ -187,7 +192,7 @@ def score_quiz_quality(job_id: str, payload: dict[str, Any]) -> dict[str, Any]:
                 "suggestions": scoring_result.suggestions,
             }
         except Exception as exc:
-            logger.exception("Quiz scoring job %s failed", job_id)
+            task_logger.exception("Quiz scoring job %s failed", job_id)
             await _update_job_status(job_id, JobStatus.FAILED, error=str(exc))
             raise
         await _update_job_status(job_id, JobStatus.COMPLETED, result=result)

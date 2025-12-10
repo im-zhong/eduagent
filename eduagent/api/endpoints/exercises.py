@@ -14,8 +14,10 @@ from eduagent.api.schemas import (
     QuestionType,
     SubjectArea,
 )
+from eduagent.logger import get_logger
 
 router = APIRouter()
+api_logger = get_logger(__name__, component="api.exercises")
 
 
 @router.post("/exercises")
@@ -23,7 +25,9 @@ async def create_exercise(request: ExerciseCreateRequest) -> ExerciseResponse:
     """
     Create a new exercise with specific constraints
     """
-    # Mock implementation
+    api_logger.info(
+        f"Create exercise request title={request.title} subject={request.subject} difficulty={request.difficulty}"
+    )
     return ExerciseResponse(
         id=str(uuid.uuid4()),
         title=request.title,
@@ -43,7 +47,9 @@ async def start_practice_session(
     """
     Start a new practice session for students
     """
-    # Mock implementation
+    api_logger.info(
+        f"Start practice session request exercise={request.exercise_id} questions={request.num_questions}"
+    )
     questions = [
         GeneratedQuestion(
             id=str(uuid.uuid4()),
@@ -74,7 +80,7 @@ async def get_exercise(exercise_id: str) -> ExerciseResponse:
     """
     Get exercise details
     """
-    # Mock implementation
+    api_logger.debug(f"Exercise lookup requested exercise_id={exercise_id}")
     return ExerciseResponse(
         id=exercise_id,
         title="Sample Exercise",
