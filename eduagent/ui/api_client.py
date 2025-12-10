@@ -3,117 +3,133 @@ API Client for EduAgent UI
 Provides interface to communicate with the backend API
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 import requests
 
 from eduagent.defs import defs
 
-HTTP_STATUS_OK = 200
+HTTP_SUCCESS_CODES = (200, 201, 202)
 
 
 class EduAgentAPIClient:
     """Client for interacting with EduAgent API"""
 
-    def __init__(self, base_url: str = "http://api.eduagent:8000") -> None:
-        self.base_url = base_url
+    def __init__(
+        self,
+        base_url: str = "http://api.eduagent:8000",
+        service_token: str | None = None,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.service_token = service_token
+        self.timeout = 30
+
+    def configure(self, base_url: str, service_token: str | None) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.service_token = service_token
+
+    def _headers(self) -> dict[str, str]:
+        headers: dict[str, str] = {}
+        if self.service_token:
+            headers["Authorization"] = f"Bearer {self.service_token}"
+        return headers
 
     def _make_request(
-        self, endpoint: str, method: str = "GET", data: dict[str, Any] | None = None
+        self,
+        endpoint: str,
+        method: str = "GET",
+        json_data: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Make HTTP request to API"""
         url = f"{self.base_url}{endpoint}"
         try:
-            if method.upper() == "GET":
-                response = requests.get(url)
-            elif method.upper() == "POST":
-                response = requests.post(url, json=data)
-            elif method.upper() == "PUT":
-                response = requests.put(url, json=data)
-            else:
-                return {"error": f"Unsupported HTTP method: {method}"}
+            response = requests.request(
+                method=method.upper(),
+                url=url,
+                json=json_data,
+                data=data,
+                files=files,
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
+        except requests.RequestException as exc:
+            return {"error": f"Request failed: {exc!s}"}
 
-            if response.status_code == HTTP_STATUS_OK:
+        if response.status_code in HTTP_SUCCESS_CODES:
+            try:
                 return response.json()
-            return {"error": f"HTTP {response.status_code}: {response.text}"}  # noqa: TRY300
-
-        except requests.exceptions.RequestException as e:
-            return {"error": f"Request failed: {e!s}"}
+            except ValueError:
+                return {"status": response.status_code}
+        return {"error": f"HTTP {response.status_code}: {response.text}"}
 
     def health_check(self) -> dict[str, Any]:
-        """Check API health"""
         return self._make_request(defs.api.HEALTH_CHECK)
 
-    def upload_textbook(
-        self, filename: str, subject: str, grade_level: str
+    def upload_ingestion_document(
+        self, filename: str, file_bytes: bytes, subject: str, grade_level: str
     ) -> dict[str, Any]:
-        """Upload textbook for knowledge extraction"""
-        data = {"filename": filename, "subject": subject, "grade_level": grade_level}
-        return self._make_request(defs.api.TEXTBOOK_UPLOAD, "POST", data)
+        files = {"file": (filename, file_bytes)}
+        data = {"subject": subject, "grade_level": grade_level}
+        return self._make_request(defs.api.QUIZ_UPLOAD, "POST", data=data, files=files)
 
-    def get_extraction_status(self, extraction_id: str) -> dict[str, Any]:
-        """Get status of knowledge extraction"""
-        endpoint = defs.api.EXTRACTION_STATUS.format(extraction_id=extraction_id)
+    def get_quiz_job(self, job_id: str) -> dict[str, Any]:
+        endpoint = defs.api.QUIZ_JOB_DETAIL.format(job_id=job_id)
         return self._make_request(endpoint)
 
-    def generate_questions(
+    def request_quiz_generation(
         self,
-        knowledge_point_ids: list[str],
-        question_type: str,
-        difficulty: str,
-        num_questions: int,
+        ingestion_job_id: str,
+        subject: str | None,
+        query: str | None,
+        rules: dict[str, Any],
     ) -> dict[str, Any]:
-        """Generate educational questions"""
-        data = {
-            "knowledge_point_ids": knowledge_point_ids,
-            "question_type": question_type,
-            "difficulty": difficulty,
-            "num_questions": num_questions,
+        payload = {
+            "ingestion_job_id": ingestion_job_id,
+            "subject": subject,
+            "query": query,
+            "quiz_rules": rules,
         }
-        return self._make_request(defs.api.GENERATE_QUESTIONS, "POST", data)
+        return self._make_request(defs.api.QUIZ_GENERATE, "POST", json_data=payload)
 
-    def control_question_difficulty(
-        self, question_text: str, target_difficulty: float
+    def request_quiz_evaluation(
+        self, quiz_job_id: str, answers: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Control question difficulty"""
-        data = {"question_text": question_text, "target_difficulty": target_difficulty}
-        return self._make_request(defs.api.CONTROL_DIFFICULTY, "POST", data)
+        payload = {"quiz_job_id": quiz_job_id, "answers": answers}
+        return self._make_request(defs.api.QUIZ_EVALUATE, "POST", json_data=payload)
 
-    def generate_distractors(
-        self, question_text: str, knowledge_point_id: str
+    def request_quiz_scoring(
+        self,
+        quiz_job_id: str,
+        questions: list[dict[str, Any]],
+        rules: dict[str, Any] | None,
     ) -> dict[str, Any]:
-        """Generate distractors for multiple choice questions"""
-        data = {
-            "question_text": question_text,
-            "knowledge_point_id": knowledge_point_id,
+        payload = {
+            "quiz_job_id": quiz_job_id,
+            "questions": questions,
+            "rules": rules,
         }
-        return self._make_request(defs.api.GENERATE_DISTRACTORS, "POST", data)
+        return self._make_request(defs.api.QUIZ_SCORE, "POST", json_data=payload)
 
-    def start_practice_session(
-        self, knowledge_point_ids: list[str], num_questions: int, difficulty: str
-    ) -> dict[str, Any]:
-        """Start a practice session"""
-        data = {
-            "knowledge_point_ids": knowledge_point_ids,
-            "num_questions": num_questions,
-            "difficulty": difficulty,
-        }
-        return self._make_request(defs.api.START_PRACTICE, "POST", data)
+    def run_quiz_workflow(self, ingestion_job_id: str, prompt: str) -> dict[str, Any]:
+        payload = {"ingestion_job_id": ingestion_job_id, "prompt": prompt}
+        return self._make_request(defs.api.QUIZ_WORKFLOW, "POST", json_data=payload)
 
     def get_performance_analytics(
         self, student_id: str, time_period: str
     ) -> dict[str, Any]:
-        """Get student performance analytics"""
         data = {"student_id": student_id, "time_period": time_period}
-        return self._make_request(defs.api.PERFORMANCE_ANALYTICS, "POST", data)
+        return self._make_request(
+            defs.api.PERFORMANCE_ANALYTICS, "POST", json_data=data
+        )
 
     def get_class_analytics(self, class_id: str, time_period: str) -> dict[str, Any]:
-        """Get class analytics"""
         endpoint = defs.api.CLASS_ANALYTICS.format(class_id=class_id)
         data = {"time_period": time_period}
-        return self._make_request(endpoint, "POST", data)
+        return self._make_request(endpoint, "POST", json_data=data)
 
     def analyze_mistakes(self, student_id: str, subject: str) -> dict[str, Any]:
-        """Analyze student mistake patterns"""
         data = {"student_id": student_id, "subject": subject}
-        return self._make_request(defs.api.MISTAKE_ANALYSIS, "POST", data)
+        return self._make_request(defs.api.MISTAKE_ANALYSIS, "POST", json_data=data)

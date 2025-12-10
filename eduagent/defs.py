@@ -40,29 +40,14 @@ class APIDefs:
     # Base API path
     BASE_PATH = "/api/v1"
 
-    # Knowledge Extraction Endpoints
-    TEXTBOOK_UPLOAD = f"{BASE_PATH}/textbook/upload"
-    EXTRACTION_STATUS = f"{BASE_PATH}/knowledge/extraction/{{extraction_id}}"
-    KNOWLEDGE_GRAPH = f"{BASE_PATH}/knowledge/graph/{{textbook_id}}"
-
-    # Question Generation Endpoints
-    GENERATE_QUESTIONS = f"{BASE_PATH}/questions/generate"
-    CONTROL_DIFFICULTY = f"{BASE_PATH}/questions/difficulty/control"
-    GENERATE_DISTRACTORS = f"{BASE_PATH}/questions/distractors/generate"
-
-    # Assessment & Feedback Endpoints
-    EVALUATE_ANSWERS = f"{BASE_PATH}/assessment/evaluate"
-    PROVIDE_FEEDBACK = f"{BASE_PATH}/feedback/provide"
-
-    # User Management Endpoints
-    USER_REGISTER = f"{BASE_PATH}/users/register"
-    USER_LOGIN = f"{BASE_PATH}/users/login"
-    USER_PROFILE = f"{BASE_PATH}/users/{{user_id}}"
-
-    # Exercise & Practice Endpoints
-    CREATE_EXERCISE = f"{BASE_PATH}/exercises"
-    GET_EXERCISE = f"{BASE_PATH}/exercises/{{exercise_id}}"
-    START_PRACTICE = f"{BASE_PATH}/practice/session"
+    # Quiz Pipeline Endpoints
+    QUIZ_BASE = f"{BASE_PATH}/quiz"
+    QUIZ_UPLOAD = f"{QUIZ_BASE}/upload"
+    QUIZ_JOB_DETAIL = f"{QUIZ_BASE}/jobs/{{job_id}}"
+    QUIZ_WORKFLOW = f"{QUIZ_BASE}/workflow"
+    QUIZ_GENERATE = f"{QUIZ_BASE}/generate"
+    QUIZ_EVALUATE = f"{QUIZ_BASE}/evaluate"
+    QUIZ_SCORE = f"{QUIZ_BASE}/score"
 
     # Analytics Endpoints
     PERFORMANCE_ANALYTICS = f"{BASE_PATH}/analytics/performance"
@@ -71,7 +56,6 @@ class APIDefs:
 
     # System Endpoints
     HEALTH_CHECK = f"{BASE_PATH}/health"
-    BATCH_GENERATE_QUESTIONS = f"{BASE_PATH}/batch/questions/generate"
 
 
 class UIDefs:
@@ -84,21 +68,15 @@ class UIDefs:
 
     # Navigation options
     TEACHER_NAV_OPTIONS: ClassVar[list[str]] = [
-        "🏠 Dashboard",
-        "📖 Textbook Management",
-        "❓ Question Generation",
-        "📊 Analytics & Reports",
-        "👥 Class Management",
-        "⚙️ Settings",
+        "Overview",
+        "Ingestion Lab",
+        "Workflow Runner",
+        "Async Pipeline",
+        "Scoring Studio",
+        "Analytics Monitor",
     ]
 
-    STUDENT_NAV_OPTIONS: ClassVar[list[str]] = [
-        "🏠 Dashboard",
-        "📚 Practice Exercises",
-        "📈 Progress Tracking",
-        "❓ Ask Questions",
-        "⚙️ Settings",
-    ]
+    STUDENT_NAV_OPTIONS: ClassVar[list[str]] = []
 
     # Subject options
     SUBJECTS: ClassVar[list[str]] = [

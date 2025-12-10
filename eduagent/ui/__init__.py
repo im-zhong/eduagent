@@ -1,10 +1,8 @@
 """
 EduAgent UI Module
-Streamlit-based web interfaces for teachers and students
+Streamlit-based operations console.
 """
 
-from .main import run_interface
-from .student_interface import StudentInterface
-from .teacher_interface import TeacherInterface
+from .main import main
 
-__all__ = ["StudentInterface", "TeacherInterface", "run_interface"]
+__all__ = ["main"]
