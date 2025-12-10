@@ -1,6 +1,7 @@
 # Main API application
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -78,3 +79,12 @@ async def root() -> dict[str, str]:
 async def health_check() -> dict[str, str]:
     api_logger.debug("Health check endpoint requested")
     return {"status": "healthy", "service": "eduagent-api"}
+
+
+@api.get("/service-auth/verify", include_in_schema=False)
+async def verify_service_auth(
+    claims: Annotated[dict[str, Any], Depends(require_service_token)],
+) -> dict[str, str]:
+    subject = str(claims.get("sub", "unknown"))
+    api_logger.debug("Service auth validated for %s", subject)
+    return {"status": "ok", "subject": subject}

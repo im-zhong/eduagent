@@ -17,9 +17,11 @@ from eduagent.quiz.workflow import (
 from eduagent.storage.engine import async_engine, async_session_maker
 from eduagent.storage.milvus_store import EmbeddingRecord, milvus_store
 from eduagent.user.models import Base
+from tests._paths import docs_file
 
 pytestmark = pytest.mark.integration
 EXPECTED_QUESTION_COUNT = 2
+CLASSES_PATH = docs_file("classes.txt")
 
 
 def _fixed_vector() -> list[float]:
@@ -61,7 +63,17 @@ async def _ensure_schema() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
 
-async def _seed_ingestion_job() -> tuple[str, str, str]:
+def _load_classes_sections(limit: int = 2) -> list[str]:
+    text = CLASSES_PATH.read_text(encoding="utf-8")
+    sections = [section.strip().replace("\n", " ") for section in text.split("\n\n")]
+    minimum_length = 20
+    filtered = [
+        section for section in sections if len(section.strip()) >= minimum_length
+    ]
+    return filtered[:limit]
+
+
+async def _seed_ingestion_job() -> tuple[str, list[tuple[str, str]]]:
     await _ensure_schema()
     async with async_session_maker() as session:
         repo = DocumentRepository(session)
@@ -72,34 +84,42 @@ async def _seed_ingestion_job() -> tuple[str, str, str]:
             grade_level="grade-5",
             metadata={"source": "integration-test"},
         )
-        chunk = await repo.add_chunk(
-            job.id,
-            chunk_index=0,
-            content="Plants convert sunlight into energy using photosynthesis.",
-            token_count=9,
-            extras={"metadata": {"section": "biology"}},
+        chunk_records: list[tuple[str, str]] = []
+        for index, content in enumerate(_load_classes_sections()):
+            chunk = await repo.add_chunk(
+                job.id,
+                chunk_index=index,
+                content=content,
+                token_count=len(content.split()),
+                extras={"metadata": {"section": "classes", "paragraph": index}},
+            )
+            assert chunk is not None
+            await repo.set_chunk_vector_id(chunk.id, vector_id=chunk.id)
+            chunk_records.append((chunk.id, content))
+        return job.id, chunk_records
+
+
+def _insert_vectors(
+    job_id: str, chunk_records: list[tuple[str, str]], vector: list[float]
+) -> None:
+    records = [
+        EmbeddingRecord(
+            record_id=chunk_id,
+            text=text,
+            embedding=vector,
+            metadata={"ingestion_job_id": job_id, "chunk_index": idx},
         )
-        assert chunk is not None
-        await repo.set_chunk_vector_id(chunk.id, vector_id=chunk.id)
-        return job.id, chunk.id, chunk.content
-
-
-def _insert_vector(chunk_id: str, job_id: str, text: str, vector: list[float]) -> None:
-    record = EmbeddingRecord(
-        record_id=chunk_id,
-        text=text,
-        embedding=vector,
-        metadata={"ingestion_job_id": job_id, "chunk_index": 0},
-    )
-    inserted = milvus_store.insert_records([record])
-    assert inserted == 1
+        for idx, (chunk_id, text) in enumerate(chunk_records)
+    ]
+    inserted = milvus_store.insert_records(records)
+    assert inserted == len(records)
 
 
 @pytest.mark.asyncio
 async def test_quiz_workflow_runner_persists_artifact() -> None:
-    job_id, chunk_id, chunk_text = await _seed_ingestion_job()
+    job_id, chunk_records = await _seed_ingestion_job()
     vector = _fixed_vector()
-    _insert_vector(chunk_id, job_id, chunk_text, vector)
+    _insert_vectors(job_id, chunk_records, vector)
     workflow = QuizGenerationWorkflow(
         QuizWorkflowConfig(
             vector_store=milvus_store,

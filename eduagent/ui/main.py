@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import streamlit as st
 
+from eduagent.api.schemas import SubjectArea
 from eduagent.defs import defs
 from eduagent.ui.api_client import EduAgentAPIClient
 
@@ -94,13 +95,16 @@ def page_ingestion_lab(client: EduAgentAPIClient) -> None:
     st.title("Ingestion Lab")
     st.subheader("Upload textbook or DOCX")
     file = st.file_uploader("Select file", type=["docx", "pdf"])
-    col1, col2 = st.columns(2)
-    subject = col1.selectbox("Subject", defs.ui.SUBJECTS)
-    grade = col2.selectbox("Grade Level", defs.ui.GRADE_LEVELS)
+    grade = st.selectbox("Grade Level", defs.ui.GRADE_LEVELS)
+    st.caption(
+        "Subject tagging is inferred automatically by the ingestion workflow. "
+        "Documents are initially stored with the 'general' subject label."
+    )
+    subject_value = SubjectArea.GENERAL.value
     if st.button("Start Ingestion") and file is not None:
         with st.spinner("Uploading to ingestion pipeline..."):
             result = client.upload_ingestion_document(
-                file.name, file.getvalue(), subject, grade
+                file.name, file.getvalue(), subject_value, grade
             )
         if "error" in result:
             st.error(result["error"])
