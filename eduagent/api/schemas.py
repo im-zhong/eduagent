@@ -280,6 +280,18 @@ class QuizEvaluationResponse(BaseModel):
     details: list[dict[str, Any]]
 
 
+class QuizScoringRequest(BaseModel):
+    quiz_job_id: str
+    questions: list[dict[str, Any]]
+    rules: dict[str, Any] | None = None
+
+
+class QuizScoringResponse(BaseModel):
+    quality: float
+    rationale: str
+    suggestions: list[str]
+
+
 def _empty_question_list() -> list[dict[str, Any]]:
     return []
 

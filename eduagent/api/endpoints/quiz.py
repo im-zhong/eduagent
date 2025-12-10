@@ -13,6 +13,7 @@ from eduagent.api.schemas import (
     QuizGenerationRequest,
     QuizJobDetailResponse,
     QuizJobHandleResponse,
+    QuizScoringRequest,
     QuizWorkflowRequest,
     QuizWorkflowResponse,
     SubjectArea,
@@ -24,7 +25,12 @@ from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.schemas import QuizJobDTO
 from eduagent.quiz.workflow import QuizWorkflowRunner
 from eduagent.storage.engine import get_async_session
-from eduagent.tasks.quiz import evaluate_answers, generate_quiz, process_textbook_upload
+from eduagent.tasks.quiz import (
+    evaluate_answers,
+    generate_quiz,
+    process_textbook_upload,
+    score_quiz_quality,
+)
 
 
 @runtime_checkable
@@ -237,4 +243,32 @@ async def request_quiz_evaluation(
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover
         raise HTTPException(status_code=500, detail="Failed to create evaluation job")
+    return _handle_response(dto)
+
+
+@router.post(
+    "/score",
+    response_model=QuizJobHandleResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def request_quiz_scoring(
+    request: QuizScoringRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> QuizJobHandleResponse:
+    repo = QuizJobRepository(session)
+    quiz_job = await repo.get_job(request.quiz_job_id)
+    if quiz_job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Quiz job not found"
+        )
+    job = await repo.create_scoring_job(
+        parent_job_id=request.quiz_job_id,
+        payload=request.model_dump(mode="json"),
+    )
+    scoring_task = cast(SupportsDelay, score_quiz_quality)
+    task = scoring_task.delay(job.id, request.model_dump(mode="json"))
+    await repo.set_task_id(job.id, _extract_task_id(task))
+    dto = await repo.to_dto(job)
+    if dto is None:  # pragma: no cover
+        raise HTTPException(status_code=500, detail="Failed to create scoring job")
     return _handle_response(dto)

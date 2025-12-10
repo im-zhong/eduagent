@@ -19,6 +19,7 @@ from eduagent.documents.services import (
 )
 from eduagent.quiz.enums import JobStatus
 from eduagent.quiz.repository import QuizJobRepository
+from eduagent.quiz.scoring import QuizScoringService
 from eduagent.storage.engine import async_session_maker
 from eduagent.storage.milvus_store import MilvusVectorStore, milvus_store
 
@@ -167,5 +168,29 @@ def evaluate_answers(job_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         else:
             await _update_job_status(job_id, JobStatus.COMPLETED, result=result)
             return result
+
+    return asyncio.run(_run())
+
+
+@celery_app.task(name="eduagent.quiz.score")
+def score_quiz_quality(job_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Score quiz quality using an LLM rubric."""
+
+    async def _run() -> dict[str, Any]:
+        await _update_job_status(job_id, JobStatus.PROCESSING)
+        service = QuizScoringService()
+        try:
+            scoring_result = service.score(payload)
+            result = {
+                "quality": scoring_result.quality,
+                "rationale": scoring_result.rationale,
+                "suggestions": scoring_result.suggestions,
+            }
+        except Exception as exc:
+            logger.exception("Quiz scoring job %s failed", job_id)
+            await _update_job_status(job_id, JobStatus.FAILED, error=str(exc))
+            raise
+        await _update_job_status(job_id, JobStatus.COMPLETED, result=result)
+        return result
 
     return asyncio.run(_run())

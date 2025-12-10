@@ -12,3 +12,4 @@ class JobType(str, Enum):
     INGESTION = "ingestion"
     QUIZ_GENERATION = "quiz_generation"
     ANSWER_EVALUATION = "answer_evaluation"
+    QUIZ_SCORING = "quiz_scoring"

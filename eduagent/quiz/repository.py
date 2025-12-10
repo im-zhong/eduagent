@@ -73,6 +73,20 @@ class QuizJobRepository:
             },
         )
 
+    async def create_scoring_job(
+        self,
+        *,
+        parent_job_id: str,
+        payload: dict[str, Any],
+    ) -> QuizPipelineJob:
+        return await self._create_job(
+            JobType.QUIZ_SCORING,
+            {
+                "parent_job_id": parent_job_id,
+                "job_payload": payload,
+            },
+        )
+
     async def _create_job(
         self,
         job_type: JobType,
