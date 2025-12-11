@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
+from typing import Any, cast
 from uuid import uuid4
 
 import httpx
@@ -28,7 +29,8 @@ def _auth_headers() -> dict[str, str]:
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=1)).timestamp()),
     }
-    token = jwt.encode(payload, cfg.secret_key, algorithm=cfg.algorithm)
+    jwt_module = cast(Any, jwt)
+    token = jwt_module.encode(payload, cfg.secret_key, algorithm=cfg.algorithm)
     return {"Authorization": f"Bearer {token}"}
 
 

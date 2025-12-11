@@ -22,6 +22,7 @@ from eduagent.settings import MilvusConfig, settings
 
 _MILVUS_CONNECTIONS = cast(Any, milvus_connections)
 _MILVUS_UTILITY = cast(Any, milvus_utility)
+logger = get_logger(__name__, component="milvus")
 
 
 class EmbeddingRecord(BaseModel):
@@ -38,11 +39,12 @@ class MilvusVectorStore:
         self,
         config: MilvusConfig | None = None,
         alias: str = "eduagent",
-        dim: int = 1536,
+        dim: int | None = None,
     ) -> None:
         self.config = config or settings.milvus
         self.alias = alias
-        self.dim = dim
+        self.dim = dim if dim is not None else self.config.dim
+        logger.info(f"milvus dim: {self.dim}")
         self.collection_name = self.config.collection
 
     def connect(self) -> None:
@@ -157,4 +159,3 @@ class MilvusVectorStore:
 
 
 milvus_store = MilvusVectorStore()
-logger = get_logger(__name__, component="milvus")

@@ -79,7 +79,9 @@ async def run_textbook_ingestion_pipeline(
         await quiz_repo.update_status(job_id, JobStatus.PROCESSING)
         try:
             document_job = await ingestion_service.ingest_docx(
-                source_filename=metadata.get("filename", metadata.get("subject", "")),
+                source_filename=metadata.get("original_filename")
+                or metadata.get("filename")
+                or metadata.get("subject", ""),
                 file_path=file_path,
                 subject=metadata.get("subject"),
                 grade_level=metadata.get("grade_level"),
@@ -106,7 +108,7 @@ async def run_textbook_ingestion_pipeline(
 
 @celery_app.task(name="eduagent.quiz.process_upload")
 def process_textbook_upload(
-    job_id: str, object_id: str, metadata: dict[str, Any]
+    job_id: str, object_name: str, metadata: dict[str, Any]
 ) -> dict[str, Any]:
     """Parse textbook, chunk content and populate vector store."""
 
@@ -114,9 +116,9 @@ def process_textbook_upload(
         try:
             milvus_store.ensure_collection()
             with TemporaryDirectory() as tmp_dir:
-                filename = metadata.get("filename") or f"{object_id}.docx"
+                filename = metadata.get("filename") or Path(object_name).name
                 download_path = Path(tmp_dir) / filename
-                minio_service.download_to_path(object_id, download_path)
+                minio_service.download_to_path(object_name, download_path)
                 return await run_textbook_ingestion_pipeline(
                     job_id,
                     str(download_path),

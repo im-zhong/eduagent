@@ -31,9 +31,10 @@ class LLMConfig(BaseModel):
     """大语言模型(LLM)相关配置"""
 
     api_key: str = "NOKEY"
-    api_base: str = "https://api.deepseek.com"
-    model_name: str = "glm-4.5"
-    embedding_model_name: str = "embedding_model"
+    api_base: str = "https://open.bigmodel.cn/api/paas/v4/"
+    model_name: str = "glm-4.6"
+    embedding_model_name: str = "embedding-3"
+    temperature: float = 0.0
 
 
 class DatabaseConfig(BaseModel):
@@ -102,6 +103,7 @@ class MilvusConfig(BaseModel):
     database: str = "default"
     collection: str = "eduagent_quiz_chunks"
     timeout: int = 30
+    dim: int = 1536
 
 
 class MinioConfig(BaseModel):

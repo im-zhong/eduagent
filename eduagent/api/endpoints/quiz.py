@@ -124,7 +124,8 @@ async def upload_textbook_for_quiz(
         {
             "subject": subject.value,
             "grade_level": grade_level,
-            "filename": original_filename,
+            "filename": stored_object.object_name,
+            "original_filename": original_filename,
             "content_type": file.content_type,
             "object_id": stored_object.object_id,
         },

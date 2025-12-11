@@ -16,7 +16,7 @@ def test_generate_service_jwt_from_settings() -> None:
         "aud": cfg.audience,
         "sub": "unit-test-service",
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=2)).timestamp()),
+        "exp": int((now + timedelta(days=30)).timestamp()),
     }
     token: str = jwt.encode(  # pyright: ignore[reportUnknownMemberType]
         payload, cfg.secret_key, algorithm=cfg.algorithm

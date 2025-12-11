@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import hashlib
 from io import BytesIO
 from pathlib import Path
 from typing import Any, BinaryIO
-from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 
@@ -85,19 +83,21 @@ def test_store_file_uploads_once() -> None:
     stored = service.store_file(BytesIO(payload), filename="lesson.docx")
     assert stored.bucket == "unit-test-bucket"
     assert stored.size == len(payload)
-    expected_uuid = str(uuid5(NAMESPACE_URL, hashlib.sha256(payload).hexdigest()))
-    assert stored.object_id == expected_uuid
+    assert stored.object_id == "lesson.docx"
+    assert stored.object_name == "lesson.docx"
     assert fake.put_calls == 1
 
 
-def test_store_file_returns_same_uuid_for_duplicate_content() -> None:
+def test_store_file_generates_unique_name_on_conflict() -> None:
     fake = FakeMinioClient()
     service = _service(fake)
     payload = b"duplicate payload"
-    first = service.store_file(BytesIO(payload), filename="first.docx")
-    second = service.store_file(BytesIO(payload), filename="second.docx")
-    assert first.object_id == second.object_id
-    assert fake.put_calls == 1  # second upload short-circuits
+    first = service.store_file(BytesIO(payload), filename="dup.docx")
+    second = service.store_file(BytesIO(payload), filename="dup.docx")
+    assert first.object_id == "dup.docx"
+    assert second.object_id == "dup-1.docx"
+    expected_uploads = 2
+    assert fake.put_calls == expected_uploads
 
 
 def test_download_to_path_restores_payload(tmp_path: Path) -> None:

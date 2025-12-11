@@ -26,14 +26,18 @@ async def require_service_token(
     token = credentials.credentials
     config = settings.service_auth
     try:
-        payload = jwt.decode(
-            token,
-            config.secret_key,
-            algorithms=[config.algorithm],
-            audience=config.audience or None,
-            issuer=config.issuer or None,
-            leeway=config.leeway_seconds,
-            options={"verify_aud": bool(config.audience)},
+        jwt_module = cast(Any, jwt)
+        payload = cast(
+            dict[str, Any],
+            jwt_module.decode(
+                token,
+                config.secret_key,
+                algorithms=[config.algorithm],
+                audience=config.audience or None,
+                issuer=config.issuer or None,
+                leeway=config.leeway_seconds,
+                options={"verify_aud": bool(config.audience)},
+            ),
         )
     except jwt.InvalidTokenError as exc:
         security_logger.warning("Invalid service token: %s", exc)
@@ -41,4 +45,4 @@ async def require_service_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         ) from exc
-    return cast(dict[str, Any], payload)
+    return payload

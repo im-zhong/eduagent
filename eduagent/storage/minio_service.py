@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import copyfileobj
@@ -88,8 +87,9 @@ class MinioService:
         self._bucket_ready = True
 
     @staticmethod
-    def _object_name(object_id: str) -> str:
-        return f"{object_id}.bin"
+    def _sanitize_filename(filename: str) -> str:
+        candidate = Path(filename).name.strip()
+        return candidate or "uploaded_file"
 
     def _stat_object(self, object_name: str) -> int | None:
         try:
@@ -101,6 +101,17 @@ class MinioService:
         except FileNotFoundError:
             return None
         return getattr(stat, "size", None)
+
+    def _resolve_object_name(self, filename: str) -> str:
+        sanitized = self._sanitize_filename(filename)
+        base = Path(sanitized).stem or "uploaded_file"
+        suffix = Path(sanitized).suffix
+        candidate = sanitized
+        index = 1
+        while self._stat_object(candidate) is not None:
+            candidate = f"{base}-{index}{suffix}"
+            index += 1
+        return candidate
 
     def store_file(
         self,
@@ -124,22 +135,12 @@ class MinioService:
                 temp.write(chunk)
                 total_bytes += len(chunk)
             temp.seek(0)
+            object_name = self._resolve_object_name(filename)
+            object_id = object_name
             checksum = hasher.hexdigest()
-            object_id = str(uuid.uuid5(uuid.NAMESPACE_URL, checksum))
-            object_name = self._object_name(object_id)
-            existing_size = self._stat_object(object_name)
-            if existing_size is not None:
-                return StoredObject(
-                    object_id=object_id,
-                    bucket=self.bucket,
-                    object_name=object_name,
-                    size=existing_size,
-                    checksum=checksum,
-                )
             metadata_payload: MetadataDict = {
                 k: str(v) for k, v in (metadata or {}).items()
             }
-            metadata_payload.setdefault("filename", filename)
             metadata_payload.setdefault("checksum", checksum)
             payload_metadata: MetadataDict | None = metadata_payload or None
             upload_content_type = content_type or "application/octet-stream"
@@ -151,7 +152,7 @@ class MinioService:
                 content_type=upload_content_type,
                 metadata=payload_metadata,
             )
-        self._logger.info("Stored file %s as object %s", filename, object_id)
+        self._logger.info("Stored file %s as object %s", filename, object_name)
         return StoredObject(
             object_id=object_id,
             bucket=self.bucket,
@@ -160,11 +161,10 @@ class MinioService:
             checksum=checksum,
         )
 
-    def download_to_path(self, object_id: str, destination: Path) -> Path:
+    def download_to_path(self, object_name: str, destination: Path) -> Path:
         self._ensure_bucket()
         destination = Path(destination)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        object_name = self._object_name(object_id)
         response = self.client.get_object(self.bucket, object_name)
         try:
             with destination.open("wb") as target:

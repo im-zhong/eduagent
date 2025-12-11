@@ -7,7 +7,8 @@ print_help() {
     echo "Commands:"
     echo "  api         Start FastAPI server"
     echo "  ui          Start streamlit worker"
-    echo "  dev        Start both FastAPI and Streamlit in development mode"
+    echo "  dev         Start both FastAPI and Streamlit in development mode"
+    echo "  celery      Start Celery worker (pass additional args as needed)"
     echo "  help       Show this help message"
     echo
 }
@@ -76,6 +77,12 @@ case "$1" in
         # "/bin/bash", "-c", "tail -f /dev/null"
         sleep infinity
 
+        ;;
+    celery)
+        echo "Starting Celery worker..."
+        install_deps
+        shift
+        exec uv run celery "$@"
         ;;
     help|--help|-h)
         print_help

@@ -32,6 +32,7 @@ dependencies = [
     "python-docx>=1.1.0",
     "python-multipart>=0.0.9",
     "redis>=7.1.0",
+    "langchain-openai>=0.3.35",
 ]
 
 [dependency-groups]

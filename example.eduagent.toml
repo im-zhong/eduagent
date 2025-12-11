@@ -6,7 +6,10 @@ api_version = "v1"
 
 [llm]
 api_key = "NOKEY"
-api_base = "https://api.deepseek.com"
+api_base = "https://open.bigmodel.cn/api/paas/v4/"
+model_name = "glm-4.6"
+embedding_model_name = "embedding-3"
+temperature = 0.0
 
 [database]
 user = "ysu_keg"
@@ -29,3 +32,9 @@ issuer = "nextjs-service"
 audience = "eduagent-api"
 algorithm = "HS256"
 leeway_seconds = 10
+
+[milvus]
+host = "eduagent-milvus"
+port = 19530
+collection = "eduagent_quiz_chunks"
+dim = 1536

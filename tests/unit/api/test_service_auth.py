@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import jwt
 from fastapi import Depends, FastAPI
@@ -25,7 +25,8 @@ def _issue_token(overrides: dict[str, Any] | None = None) -> str:
     }
     if overrides:
         payload.update(overrides)
-    return jwt.encode(payload, config.secret_key, algorithm=config.algorithm)
+    jwt_module = cast(Any, jwt)
+    return jwt_module.encode(payload, config.secret_key, algorithm=config.algorithm)
 
 
 app = FastAPI()
