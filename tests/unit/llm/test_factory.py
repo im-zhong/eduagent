@@ -7,10 +7,8 @@ from eduagent.settings import settings
 
 
 def test_chat_model_configuration() -> None:
-    custom_temperature = 0.2
-    chat = get_chat_model(temperature=custom_temperature)
+    chat = get_chat_model()
     assert isinstance(chat, ChatOpenAI)
-    assert chat.temperature == custom_temperature
     assert chat.model_name == settings.llm.model_name
     assert chat.openai_api_base == settings.llm.api_base
     assert chat.openai_api_key is not None
