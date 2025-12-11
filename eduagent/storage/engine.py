@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import Pool
 
 from eduagent.settings import DatabaseConfig, settings
 
@@ -32,12 +33,14 @@ def create_pgsql_engine(pgsql_settings: PGSQLSettings) -> Engine:
 # ==============================================================================
 
 
-def create_async_pgsql_engine(db_settings: DatabaseConfig) -> AsyncEngine:
+def create_async_pgsql_engine(
+    db_settings: DatabaseConfig, *, poolclass: type[Pool] | None = None
+) -> AsyncEngine:
     """创建异步 PostgreSQL 引擎"""
     async_url = db_settings.sqlalchemy_url.replace(
         "postgresql+psycopg", "postgresql+asyncpg"
     )
-    return create_async_engine(async_url)
+    return create_async_engine(async_url, poolclass=poolclass)
 
 
 async_engine = create_async_pgsql_engine(settings.database)
@@ -46,6 +49,14 @@ async_engine = create_async_pgsql_engine(settings.database)
 async_session_maker = async_sessionmaker(
     bind=async_engine, class_=AsyncSession, expire_on_commit=False
 )
+
+
+def create_async_session_factory(
+    *, poolclass: type[Pool] | None = None
+) -> async_sessionmaker[AsyncSession]:
+    """Create a dedicated async session factory, optionally overriding the pool."""
+    engine = create_async_pgsql_engine(settings.database, poolclass=poolclass)
+    return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession]:

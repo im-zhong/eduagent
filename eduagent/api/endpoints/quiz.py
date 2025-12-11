@@ -22,7 +22,7 @@ from eduagent.api.schemas import (
     TextbookUploadMetadata,
 )
 from eduagent.documents.repository import DocumentRepository
-from eduagent.logger import get_logger
+from eduagent.logger import LoggerProtocol, get_logger
 from eduagent.quiz.enums import JobStatus, JobType
 from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.schemas import QuizJobDTO
@@ -53,7 +53,7 @@ def _extract_task_id(result: AsyncResult) -> str:
 
 
 router = APIRouter(prefix="/quiz", tags=["Quiz Pipeline"])
-api_logger = get_logger(__name__, component="api.quiz")
+api_logger: LoggerProtocol = get_logger(__name__, component="api.quiz")
 
 
 def _handle_response(dto: QuizJobDTO) -> QuizJobHandleResponse:
@@ -135,7 +135,7 @@ async def upload_textbook_for_quiz(
     task = upload_task.delay(
         job.id,
         stored_object.object_id,
-        metadata,
+        metadata.model_dump(mode="json"),
     )
     await repo.set_task_id(job.id, _extract_task_id(task))
     dto = await repo.to_dto(job)
@@ -175,10 +175,51 @@ async def run_quiz_workflow_endpoint(
     request: QuizWorkflowRequest,
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> QuizWorkflowResponse:
+    repo = QuizJobRepository(session)
+    ingestion_job = await repo.get_job(request.ingestion_job_id)
+    if ingestion_job is None:
+        api_logger.warning(
+            f"Workflow requested for missing ingestion job {request.ingestion_job_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ingestion job not found",
+        )
+    if JobType(ingestion_job.job_type) != JobType.INGESTION:
+        api_logger.warning(
+            f"Workflow request {request.ingestion_job_id} is not an ingestion job"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provided job is not an ingestion job",
+        )
+    if JobStatus(ingestion_job.status) != JobStatus.COMPLETED:
+        api_logger.warning(
+            f"Workflow requested before completion for ingestion job {request.ingestion_job_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ingestion job has not completed",
+        )
+    result_payload = ingestion_job.result_payload or {}
+    document_job_id = result_payload.get("document_job_id")
+    if not isinstance(document_job_id, str):
+        api_logger.error(
+            "Workflow requested for ingestion job %s without document result",
+            request.ingestion_job_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ingestion artifact missing document reference",
+        )
     doc_repo = DocumentRepository(session)
     runner = QuizWorkflowRunner(doc_repo)
     try:
-        result = await runner.run(request.ingestion_job_id, request.prompt)
+        result = await runner.run(
+            request.ingestion_job_id,
+            request.prompt,
+            document_job_id=document_job_id,
+        )
     except ValueError as exc:
         api_logger.warning(
             f"Workflow run failed for ingestion job {request.ingestion_job_id}: {exc}"
@@ -237,7 +278,10 @@ async def request_quiz_generation(
         payload=generation_payload.model_dump(mode="json"),
     )
     generation_task = cast(SupportsDelay, generate_quiz)
-    task = generation_task.delay(job.id, generation_payload)
+    task = generation_task.delay(
+        job.id,
+        generation_payload.model_dump(mode="json"),
+    )
     await repo.set_task_id(job.id, _extract_task_id(task))
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover
@@ -292,7 +336,10 @@ async def request_quiz_evaluation(
         payload=evaluation_payload.model_dump(mode="json"),
     )
     evaluation_task = cast(SupportsDelay, evaluate_answers)
-    task = evaluation_task.delay(job.id, evaluation_payload)
+    task = evaluation_task.delay(
+        job.id,
+        evaluation_payload.model_dump(mode="json"),
+    )
     await repo.set_task_id(job.id, _extract_task_id(task))
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover
@@ -331,7 +378,10 @@ async def request_quiz_scoring(
         payload=scoring_payload.model_dump(mode="json"),
     )
     scoring_task = cast(SupportsDelay, score_quiz_quality)
-    task = scoring_task.delay(job.id, scoring_payload)
+    task = scoring_task.delay(
+        job.id,
+        scoring_payload.model_dump(mode="json"),
+    )
     await repo.set_task_id(job.id, _extract_task_id(task))
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover

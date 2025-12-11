@@ -17,6 +17,7 @@ from celery.utils.log import (
 )
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.pool import NullPool
 
 from eduagent.api.schemas import (
     CognitiveLevel,
@@ -42,7 +43,7 @@ from eduagent.documents.services import (
 from eduagent.quiz.enums import JobStatus
 from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.scoring import QuizScoringService
-from eduagent.storage.engine import async_session_maker
+from eduagent.storage.engine import create_async_session_factory
 from eduagent.storage.milvus_store import MilvusVectorStore, milvus_store
 from eduagent.storage.minio_service import minio_service
 
@@ -51,6 +52,9 @@ from .app import celery_app
 task_logger: Logger = get_task_logger(__name__)
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
+# Celery tasks run outside FastAPI's main event loop, so use a NullPool-backed
+# session factory to avoid reusing asyncpg connections across event loops.
+task_session_factory = create_async_session_factory(poolclass=NullPool)
 
 
 @dataclass
@@ -67,7 +71,7 @@ async def _update_job_status(
     result: BaseModel | dict[str, Any] | None = None,
     error: str | None = None,
 ) -> None:
-    async with async_session_maker() as session:
+    async with task_session_factory() as session:
         repo = QuizJobRepository(session)
         serialized_result: dict[str, Any] | None
         if result is None:
@@ -94,7 +98,7 @@ async def run_textbook_ingestion_pipeline(
     """Ingest DOCX file, chunk it, and index embeddings."""
 
     options = options or TextbookPipelineOptions()
-    session_factory = options.session_factory or async_session_maker
+    session_factory = options.session_factory or task_session_factory
     async with session_factory() as session:
         quiz_repo = QuizJobRepository(session)
         doc_repo = DocumentRepository(session)
@@ -145,7 +149,9 @@ async def run_textbook_ingestion_pipeline(
 
 @celery_app.task(name="eduagent.quiz.process_upload", pydantic=True)
 def process_textbook_upload(
-    job_id: str, object_name: str, metadata: TextbookUploadMetadata
+    job_id: str,
+    object_name: str,
+    metadata: TextbookUploadMetadata | dict[str, Any],
 ) -> TextbookIngestionResult:
     """Parse textbook, chunk content and populate vector store."""
 
@@ -153,13 +159,18 @@ def process_textbook_upload(
         try:
             milvus_store.ensure_collection()
             with TemporaryDirectory() as tmp_dir:
-                filename = metadata.filename or Path(object_name).name
+                metadata_model = (
+                    metadata
+                    if isinstance(metadata, TextbookUploadMetadata)
+                    else TextbookUploadMetadata.model_validate(metadata)
+                )
+                filename = metadata_model.filename or Path(object_name).name
                 download_path = Path(tmp_dir) / filename
                 minio_service.download_to_path(object_name, download_path)
                 return await run_textbook_ingestion_pipeline(
                     job_id,
                     str(download_path),
-                    metadata,
+                    metadata_model,
                 )
         except Exception:  # pragma: no cover - log and re-raise
             task_logger.exception("Textbook upload job %s failed", job_id)
@@ -170,23 +181,28 @@ def process_textbook_upload(
 
 @celery_app.task(name="eduagent.quiz.generate", pydantic=True)
 def generate_quiz(
-    job_id: str, payload: QuizGenerationPayload
+    job_id: str, payload: QuizGenerationPayload | dict[str, Any]
 ) -> QuestionGenerationResponse:
     """Generate quiz items using parsed knowledge base context."""
 
     async def _run() -> QuestionGenerationResponse:
         await _update_job_status(job_id, JobStatus.PROCESSING)
         try:
-            total_questions = payload.rules.total_questions
-            subject = payload.subject or SubjectArea.GENERAL
+            payload_model = (
+                payload
+                if isinstance(payload, QuizGenerationPayload)
+                else QuizGenerationPayload.model_validate(payload)
+            )
+            total_questions = payload_model.rules.total_questions
+            subject = payload_model.subject or SubjectArea.GENERAL
             questions = [
                 GeneratedQuestion(
                     id=f"{job_id}-q{idx + 1}",
                     question_text=f"{subject} question {idx + 1}",
-                    question_type=payload.rules.question_types[0]
-                    if payload.rules.question_types
+                    question_type=payload_model.rules.question_types[0]
+                    if payload_model.rules.question_types
                     else QuestionType.MULTIPLE_CHOICE,
-                    difficulty=payload.rules.primary_difficulty,
+                    difficulty=payload_model.rules.primary_difficulty,
                     cognitive_level=CognitiveLevel.MEMORY,
                     knowledge_point_ids=[],
                     options=None,
@@ -215,14 +231,19 @@ def generate_quiz(
 
 @celery_app.task(name="eduagent.quiz.evaluate", pydantic=True)
 def evaluate_answers(
-    job_id: str, payload: QuizEvaluationPayload
+    job_id: str, payload: QuizEvaluationPayload | dict[str, Any]
 ) -> QuizEvaluationResponse:
     """Evaluate quiz answers and provide simple analytics."""
 
     async def _run() -> QuizEvaluationResponse:
         await _update_job_status(job_id, JobStatus.PROCESSING)
         try:
-            answers: list[QuizAnswerItem] = payload.answers
+            payload_model = (
+                payload
+                if isinstance(payload, QuizEvaluationPayload)
+                else QuizEvaluationPayload.model_validate(payload)
+            )
+            answers: list[QuizAnswerItem] = payload_model.answers
             score = sum(1 for answer in answers if answer.is_correct)
             response = QuizEvaluationResponse(
                 score=score,
@@ -241,14 +262,21 @@ def evaluate_answers(
 
 
 @celery_app.task(name="eduagent.quiz.score", pydantic=True)
-def score_quiz_quality(job_id: str, payload: QuizScoringPayload) -> QuizScoringResponse:
+def score_quiz_quality(
+    job_id: str, payload: QuizScoringPayload | dict[str, Any]
+) -> QuizScoringResponse:
     """Score quiz quality using an LLM rubric."""
 
     async def _run() -> QuizScoringResponse:
         await _update_job_status(job_id, JobStatus.PROCESSING)
         service = QuizScoringService()
         try:
-            scoring_result = service.score(payload.model_dump())
+            payload_model = (
+                payload
+                if isinstance(payload, QuizScoringPayload)
+                else QuizScoringPayload.model_validate(payload)
+            )
+            scoring_result = service.score(payload_model.model_dump())
             response = QuizScoringResponse(
                 quality=scoring_result.quality,
                 rationale=scoring_result.rationale,

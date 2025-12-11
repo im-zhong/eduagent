@@ -20,6 +20,8 @@ class LoggerProtocol(Protocol):
         self, __message: object, /, *args: object, **kwargs: object
     ) -> None: ...
 
+    def error(self, __message: object, /, *args: object, **kwargs: object) -> None: ...
+
 
 Logger = LoggerProtocol
 

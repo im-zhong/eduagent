@@ -37,10 +37,20 @@ class DocxIngestionService:
     def _load_text(self, file_path: str | Path) -> list[str]:
         doc = DocxDocument(str(Path(file_path)))
         paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-        if not paragraphs:
+        # Table-heavy documents often keep their content in table cells instead of
+        # top-level paragraphs, so collect that text as well.
+        table_text: list[str] = []
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    text = cell.text.strip()
+                    if text:
+                        table_text.append(text)
+        combined = paragraphs + table_text
+        if not combined:
             msg = f"No readable text found in {file_path}"
             raise ValueError(msg)
-        return paragraphs
+        return combined
 
     def _chunk_paragraphs(self, paragraphs: list[str]) -> list[LCDocument]:
         base_doc = LCDocument(

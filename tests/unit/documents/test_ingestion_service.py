@@ -87,3 +87,28 @@ async def test_docx_ingestion_service_handles_empty_doc(
     failed_job = result.scalar_one()
     assert failed_job.status == "failed"
     assert failed_job.error_message is not None
+
+
+@pytest.mark.asyncio
+async def test_docx_ingestion_service_reads_table_content(
+    session: AsyncSession, tmp_path: Path
+) -> None:
+    table_path = tmp_path / "table.docx"
+    doc = DocxDocument()
+    table = doc.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Photosynthesis stages"
+    table.cell(0, 1).text = "Light-dependent"
+    table.cell(1, 0).text = "Calvin cycle"
+    table.cell(1, 1).text = "Produces sugars"
+    doc.save(str(table_path))
+
+    repo = DocumentRepository(session)
+    service = DocxIngestionService(repo, chunk_size=40, chunk_overlap=0)
+    job = await service.ingest_docx(
+        source_filename="table.docx",
+        file_path=str(table_path),
+        subject="science",
+        grade_level="grade-7",
+    )
+    assert job.status == "completed"
+    assert job.total_chunks > 0
