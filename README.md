@@ -29,6 +29,17 @@ max_iterations = 3        # Safety cap for ReAct loops
 
 These values are available under `settings.quiz_workflow` and applied automatically when `QuizWorkflowRunner` executes the agent.
 
+### Streaming API
+
+Use the SSE endpoint to monitor agent progress in real time:
+
+```
+POST /api/v1/quiz/workflow/stream
+{"ingestion_job_id": "<id>", "prompt": "生成练习题"}
+```
+
+Each event arrives as `data: {...}` with a `phase` (plan/act/evaluate/final) and detailed payload for rendering in the UI.
+
 ## Maintainers
 
 - YunX <xyiu.run@gmail.com>

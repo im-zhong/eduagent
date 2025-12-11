@@ -24,7 +24,7 @@ EXPECTED_QUESTION_COUNT = 2
 CLASSES_PATH = docs_file("classes.txt")
 
 
-def _fixed_vector() -> list[float]:
+def fixed_vector() -> list[float]:
     return [0.01 * ((index % 7) + 1) for index in range(milvus_store.dim)]
 
 
@@ -69,7 +69,7 @@ def _load_classes_sections(limit: int = 2) -> list[str]:
     return filtered[:limit]
 
 
-async def _seed_ingestion_job() -> tuple[str, list[tuple[str, str]]]:
+async def seed_ingestion_job() -> tuple[str, list[tuple[str, str]]]:
     await _ensure_schema()
     async with async_session_maker() as session:
         repo = DocumentRepository(session)
@@ -95,7 +95,7 @@ async def _seed_ingestion_job() -> tuple[str, list[tuple[str, str]]]:
         return job.id, chunk_records
 
 
-def _insert_vectors(
+def insert_vectors(
     job_id: str, chunk_records: list[tuple[str, str]], vector: list[float]
 ) -> None:
     records = [
@@ -113,9 +113,9 @@ def _insert_vectors(
 
 @pytest.mark.asyncio
 async def test_quiz_workflow_runner_persists_artifact() -> None:
-    job_id, chunk_records = await _seed_ingestion_job()
-    vector = _fixed_vector()
-    _insert_vectors(job_id, chunk_records, vector)
+    job_id, chunk_records = await seed_ingestion_job()
+    vector = fixed_vector()
+    insert_vectors(job_id, chunk_records, vector)
     llm_responses = [
         {"thought": "需要检索知识", "action": "retrieve"},
         {"status": "continue", "feedback": "没有题目"},

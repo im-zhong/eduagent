@@ -472,6 +472,7 @@ class QuizWorkflowRunner:
         prompt: str,
         *,
         document_job_id: str | None = None,
+        callback: Callable[[ReActEvent], None] | None = None,
     ) -> dict[str, Any]:
         doc_job_id = document_job_id or ingestion_job_id
         ingestion_job = await self.repository.get_job(doc_job_id)
@@ -486,7 +487,13 @@ class QuizWorkflowRunner:
             or settings.quiz_workflow.default_language
         )
         workflow_result = dict(
-            workflow.run(prompt, ingestion_job_id=doc_job_id, language=language) or {}
+            workflow.run(
+                prompt,
+                ingestion_job_id=doc_job_id,
+                language=language,
+                callback=callback,
+            )
+            or {}
         )
         artifact = await self.repository.add_artifact(
             doc_job_id,

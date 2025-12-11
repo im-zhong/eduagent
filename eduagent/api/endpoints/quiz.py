@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+import json
+from collections.abc import AsyncIterator
 from typing import Annotated, Any, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from eduagent.api.schemas import (
@@ -26,7 +30,7 @@ from eduagent.logger import LoggerProtocol, get_logger
 from eduagent.quiz.enums import JobStatus, JobType
 from eduagent.quiz.repository import QuizJobRepository
 from eduagent.quiz.schemas import QuizJobDTO
-from eduagent.quiz.workflow import QuizWorkflowRunner
+from eduagent.quiz.workflow import QuizWorkflowRunner, ReActEvent
 from eduagent.storage.engine import get_async_session
 from eduagent.storage.minio_service import minio_service
 from eduagent.tasks.quiz import (
@@ -230,6 +234,101 @@ async def run_quiz_workflow_endpoint(
         ) from exc
     api_logger.info(f"Workflow completed for ingestion job {request.ingestion_job_id}")
     return QuizWorkflowResponse(**result)
+
+
+@router.post(
+    "/workflow/stream",
+    status_code=status.HTTP_200_OK,
+)
+async def stream_quiz_workflow_endpoint(
+    request: QuizWorkflowRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> StreamingResponse:
+    repo = QuizJobRepository(session)
+    ingestion_job = await repo.get_job(request.ingestion_job_id)
+    if ingestion_job is None:
+        api_logger.warning(
+            f"Workflow stream requested for missing ingestion job {request.ingestion_job_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ingestion job not found",
+        )
+    if JobType(ingestion_job.job_type) != JobType.INGESTION:
+        api_logger.warning(
+            f"Workflow stream request {request.ingestion_job_id} is not an ingestion job"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provided job is not an ingestion job",
+        )
+    if JobStatus(ingestion_job.status) != JobStatus.COMPLETED:
+        api_logger.warning(
+            f"Workflow stream requested before completion for ingestion job {request.ingestion_job_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ingestion job has not completed",
+        )
+    result_payload = ingestion_job.result_payload or {}
+    document_job_id = result_payload.get("document_job_id")
+    if not isinstance(document_job_id, str):
+        api_logger.error(
+            "Workflow stream requested for ingestion job %s without document result",
+            request.ingestion_job_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ingestion artifact missing document reference",
+        )
+    doc_repo = DocumentRepository(session)
+    event_stream = await _react_event_stream(
+        doc_repo,
+        request.ingestion_job_id,
+        document_job_id,
+        request.prompt,
+    )
+    return StreamingResponse(event_stream, media_type="text/event-stream")
+
+
+async def _react_event_stream(
+    repo: DocumentRepository,
+    ingestion_job_id: str,
+    document_job_id: str,
+    prompt: str,
+) -> AsyncIterator[str]:
+    runner = QuizWorkflowRunner(repo)
+    queue: asyncio.Queue[str] = asyncio.Queue()
+
+    def _callback(event: ReActEvent) -> None:
+        payload = {
+            "phase": event.phase,
+            "job_id": event.job_id,
+            "payload": event.payload,
+        }
+        queue.put_nowait(json.dumps(payload))
+
+    async def _runner() -> None:
+        result = await runner.run(
+            ingestion_job_id,
+            prompt,
+            document_job_id=document_job_id,
+            callback=_callback,
+        )
+        await queue.put(json.dumps({"phase": "final", "payload": result}))
+        await queue.put("__DONE__")
+
+    stream_task = asyncio.create_task(_runner())
+
+    async def _generator() -> AsyncIterator[str]:
+        while True:
+            chunk = await queue.get()
+            if chunk == "__DONE__":
+                break
+            yield f"data: {chunk}\n\n"
+        await stream_task
+
+    return _generator()
 
 
 @router.post(

@@ -67,6 +67,7 @@ class APIDefs:
     QUIZ_UPLOAD = f"{QUIZ_BASE}/upload"
     QUIZ_JOB_DETAIL = f"{QUIZ_BASE}/jobs/{{job_id}}"
     QUIZ_WORKFLOW = f"{QUIZ_BASE}/workflow"
+    QUIZ_WORKFLOW_STREAM = f"{QUIZ_BASE}/workflow/stream"
     QUIZ_GENERATE = f"{QUIZ_BASE}/generate"
     QUIZ_EVALUATE = f"{QUIZ_BASE}/evaluate"
     QUIZ_SCORE = f"{QUIZ_BASE}/score"
