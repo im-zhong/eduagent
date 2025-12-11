@@ -136,6 +136,14 @@ class ServiceAuthConfig(BaseModel):
     leeway_seconds: int = Field(default=10, ge=0)
 
 
+class QuizWorkflowSettings(BaseModel):
+    """ReAct 流水线相关配置。"""
+
+    default_language: str = "zh"
+    retrieval_limit: int = 5
+    max_iterations: int = 3
+
+
 # --- 总的 Settings 类 ---
 class Settings(BaseModel):
     """
@@ -153,6 +161,7 @@ class Settings(BaseModel):
     minio: MinioConfig = Field(default_factory=MinioConfig)
     celery: CeleryConfig = Field(default_factory=CeleryConfig)
     service_auth: ServiceAuthConfig = Field(default_factory=ServiceAuthConfig)
+    quiz_workflow: QuizWorkflowSettings = Field(default_factory=QuizWorkflowSettings)
 
     def model_post_init(self, __context: object, /) -> None:
         if not self.celery.broker_url:

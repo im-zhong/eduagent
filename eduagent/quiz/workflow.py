@@ -11,9 +11,12 @@ from typing_extensions import TypedDict
 from eduagent.documents.repository import DocumentRepository
 from eduagent.documents.services import EmbeddingBackend
 from eduagent.llm.factory import get_chat_model
+from eduagent.logger import get_logger
+from eduagent.settings import settings
 from eduagent.storage.milvus_store import MilvusVectorStore, milvus_store
 
 INGESTION_METADATA_KEY = "ingestion_job_id"
+workflow_logger = get_logger(__name__, component="quiz.workflow")
 
 
 class ReActGraphRunnable(Protocol):
@@ -45,6 +48,7 @@ class ReActAgentState(TypedDict, total=False):
     goal_met: bool
     iterations: int
     final_output: dict[str, Any]
+    tool_counts: dict[str, int]
 
 
 @dataclass
@@ -56,17 +60,26 @@ class ReActWorkflowConfig:
     llm: Any | None = None
     retrieval_limit: int = 5
     max_iterations: int = 3
+    default_language: str = "zh"
 
 
 class ReActQuizWorkflow:
     """ReAct-style workflow that plans, selects tools, and refines output in Chinese."""
 
     def __init__(self, config: ReActWorkflowConfig | None = None) -> None:
-        self.config = config or ReActWorkflowConfig()
+        self.config = config or self._config_from_settings()
         self.vector_store = self.config.vector_store or milvus_store
         self.embedder = self.config.embedder or EmbeddingBackend()
         self.llm = self.config.llm or get_chat_model()
         self.graph: ReActGraphRunnable = self._build_graph()
+
+    def _config_from_settings(self) -> ReActWorkflowConfig:
+        workflow_settings = settings.quiz_workflow
+        return ReActWorkflowConfig(
+            retrieval_limit=workflow_settings.retrieval_limit,
+            max_iterations=workflow_settings.max_iterations,
+            default_language=workflow_settings.default_language,
+        )
 
     def _build_graph(self) -> ReActGraphRunnable:
         builder: Any = StateGraph(ReActAgentState)
@@ -94,20 +107,38 @@ class ReActQuizWorkflow:
             return "finish"
         return "continue"
 
+    def _log_step(
+        self,
+        state: ReActAgentState,
+        phase: str,
+        **details: object,
+    ) -> None:
+        job_id = state.get("ingestion_job_id")
+        workflow_logger.info(
+            f"react phase={phase} | job={job_id} | details={details}",
+        )
+
+    def _record_tool_usage(self, state: ReActAgentState, action: str) -> dict[str, int]:
+        counts = dict(state.get("tool_counts") or {})
+        counts[action] = counts.get(action, 0) + 1
+        return counts
+
     def run(
         self,
         prompt: str,
         ingestion_job_id: str | None = None,
         *,
-        language: str = "zh",
+        language: str | None = None,
     ) -> dict[str, Any]:
+        resolved_language = language or self.config.default_language
         initial_state: ReActAgentState = {
             "task": prompt,
             "ingestion_job_id": ingestion_job_id,
-            "language": language,
+            "language": resolved_language,
             "context_chunks": [],
             "draft_questions": [],
             "iterations": 0,
+            "tool_counts": {},
         }
         final_state = self.graph.invoke(initial_state)
         if "final_output" not in final_state:
@@ -118,7 +149,10 @@ class ReActQuizWorkflow:
         return {
             "questions": final_state.get("draft_questions", []),
             "answers": final_state.get("draft_questions", []),
-            "evaluation": {"feedback": str(final_state.get("critique", ""))},
+            "evaluation": {
+                "feedback": str(final_state.get("critique", "")),
+                "tool_usage": dict(final_state.get("tool_counts") or {}),
+            },
             "ingestion_job_id": ingestion_job_id,
         }
 
@@ -144,19 +178,38 @@ class ReActQuizWorkflow:
         action = str(payload.get("action") or "retrieve")
         thought = str(payload.get("thought") or "")
         plan = str(payload.get("plan") or state.get("plan", ""))
+        self._log_step(
+            state,
+            "plan",
+            thought=thought,
+            action=action,
+            plan=plan,
+        )
         return {"action": action, "thought": thought, "plan": plan}
 
     def _act_step(self, state: ReActAgentState) -> ReActAgentState:
         action = state.get("action", "retrieve")
+        result: ReActAgentState
         if action == "retrieve":
-            return self._perform_retrieval(state)
-        if action == "summarize":
-            return self._summarize_context(state)
-        if action == "generate":
-            return self._generate_questions(state)
-        if action == "critique":
-            return self._critique_questions(state)
-        return {"observation": "未执行动作"}
+            result = self._perform_retrieval(state)
+        elif action == "summarize":
+            result = self._summarize_context(state)
+        elif action == "generate":
+            result = self._generate_questions(state)
+        elif action == "critique":
+            result = self._critique_questions(state)
+        else:
+            result = cast(ReActAgentState, {"observation": "未执行动作"})
+        counts = self._record_tool_usage(state, action)
+        result["tool_counts"] = counts
+        self._log_step(
+            state,
+            "act",
+            action=action,
+            observation=result.get("observation"),
+            tool_usage=counts,
+        )
+        return result
 
     def _evaluate_step(self, state: ReActAgentState) -> ReActAgentState:
         iterations = state.get("iterations", 0) + 1
@@ -182,6 +235,13 @@ class ReActQuizWorkflow:
         )
         goal_met = str(payload.get("status", "continue")) == "finish"
         critique = str(payload.get("feedback") or "")
+        self._log_step(
+            state,
+            "evaluate",
+            goal_met=goal_met,
+            feedback=critique,
+            iterations=iterations,
+        )
         return {
             "goal_met": goal_met,
             "critique": critique,
@@ -197,12 +257,22 @@ class ReActQuizWorkflow:
                     "answer": "根据笔记撰写答案。",
                 }
             ]
+        evaluation = {
+            "feedback": str(state.get("critique", "")),
+            "tool_usage": dict(state.get("tool_counts") or {}),
+        }
         output = {
             "questions": draft,
             "answers": draft,
-            "evaluation": {"feedback": str(state.get("critique", ""))},
+            "evaluation": evaluation,
             "ingestion_job_id": state.get("ingestion_job_id"),
         }
+        self._log_step(
+            state,
+            "finalize",
+            questions=len(draft),
+            evaluation=evaluation,
+        )
         return {
             **state,
             "final_output": output,
@@ -355,7 +425,10 @@ class QuizWorkflowRunner:
         workflow: QuizWorkflowProtocol = self.workflow or ReActQuizWorkflow()
         self.workflow = workflow
         metadata = ingestion_job.job_metadata or {}
-        language = cast(str | None, metadata.get("language")) or "zh"
+        language = (
+            cast(str | None, metadata.get("language"))
+            or settings.quiz_workflow.default_language
+        )
         workflow_result = dict(
             workflow.run(prompt, ingestion_job_id=doc_job_id, language=language) or {}
         )

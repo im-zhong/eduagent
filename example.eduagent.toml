@@ -38,3 +38,8 @@ host = "eduagent-milvus"
 port = 19530
 collection = "eduagent_quiz_chunks"
 dim = 1536
+
+[quiz_workflow]
+default_language = "zh"
+retrieval_limit = 5
+max_iterations = 3

@@ -8,8 +8,8 @@ flowchart TD
     D --> E[DocumentRepository stores metadata & artifacts]
 
     E --> F{Quiz Workflow Trigger}
-    F --> G[QuizWorkflowRunner retrieves context]
-    G --> H[LangGraph: retrieve -> generate -> answer -> evaluate]
+    F --> G[QuizWorkflowRunner]
+    G --> H[ReAct Agent (plan → act → evaluate → finalize)]
     H --> I[QuizArtifact persisted]
 
     I --> J[Quiz Generation Celery Task]
