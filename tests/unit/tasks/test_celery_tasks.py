@@ -7,6 +7,15 @@ from typing import Any
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from eduagent.api.schemas import (
+    QuestionGenerationResponse,
+    QuizAnswerItem,
+    QuizEvaluationPayload,
+    QuizEvaluationResponse,
+    QuizGenerationPayload,
+    QuizGenerationRules,
+    SubjectArea,
+)
 from eduagent.quiz.enums import JobStatus
 from eduagent.quiz.repository import QuizJobRepository
 from eduagent.tasks import quiz as quiz_tasks
@@ -73,25 +82,36 @@ def test_generate_quiz_updates_job(
 ) -> None:
     job_id = _create_job(sqlite_sessionmaker, subject="Physics", grade_level="10")
     total_questions = 4
-    payload = {"quiz_rules": {"total_questions": total_questions}, "subject": "Physics"}
+    payload = QuizGenerationPayload(
+        job_id=job_id,
+        subject=SubjectArea.SCIENCE,
+        rules=QuizGenerationRules(total_questions=total_questions),
+    )
 
-    result = quiz_tasks.generate_quiz(job_id, payload)
-
-    assert len(result["questions"]) == total_questions
+    result_raw = quiz_tasks.generate_quiz(job_id, payload)
+    result = QuestionGenerationResponse.model_validate(result_raw)
+    assert len(result.questions) == total_questions
     status, stored_result = _get_job_status(sqlite_sessionmaker, job_id)
     assert status == JobStatus.COMPLETED.value
-    assert stored_result["rules"]["total_questions"] == total_questions
+    assert stored_result["questions"]
+    assert stored_result["generation_id"] == job_id
 
 
 def test_evaluate_answers_updates_job(
     sqlite_sessionmaker: async_sessionmaker[AsyncSession],
 ) -> None:
     job_id = _create_job(sqlite_sessionmaker, subject="History", grade_level="11")
-    payload = {"answers": [{"is_correct": True}, {"is_correct": False}]}
+    payload = QuizEvaluationPayload(
+        job_id=job_id,
+        answers=[
+            QuizAnswerItem(question_id="q1", answer="A", is_correct=True),
+            QuizAnswerItem(question_id="q2", answer="B", is_correct=False),
+        ],
+    )
 
-    result = quiz_tasks.evaluate_answers(job_id, payload)
-
-    assert result["score"] == 1
+    result_raw = quiz_tasks.evaluate_answers(job_id, payload)
+    result = QuizEvaluationResponse.model_validate(result_raw)
+    assert result.score == 1
     status, stored_result = _get_job_status(sqlite_sessionmaker, job_id)
     assert status == JobStatus.COMPLETED.value
-    assert stored_result["total"] == len(payload["answers"])
+    assert stored_result["total"] == len(payload.answers)

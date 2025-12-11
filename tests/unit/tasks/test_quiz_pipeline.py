@@ -8,6 +8,7 @@ import pytest_asyncio
 from docx import Document as DocxDocument
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from eduagent.api.schemas import SubjectArea, TextbookUploadMetadata
 from eduagent.documents.services import EmbeddingBackend
 from eduagent.quiz.enums import JobStatus
 from eduagent.quiz.repository import QuizJobRepository
@@ -82,15 +83,19 @@ async def test_run_textbook_ingestion_pipeline_success(
     summary = await run_textbook_ingestion_pipeline(
         job.id,
         str(doc_path),
-        {"subject": "science", "grade_level": "grade-8", "filename": "lesson.docx"},
+        TextbookUploadMetadata(
+            filename="lesson.docx",
+            subject=SubjectArea.SCIENCE,
+            grade_level="grade-8",
+        ),
         options=TextbookPipelineOptions(
             session_factory=session_factory,
             vector_store=vector_store,  # type: ignore[arg-type]
             embedding_backend=DeterministicEmbeddingBackend(),
         ),
     )
-    assert summary["chunks"] > 0
-    assert summary["embedded_records"] == summary["chunks"]
+    assert summary.chunks > 0
+    assert summary.embedded_records == summary.chunks
 
     async with session_factory() as session:
         repo = QuizJobRepository(session)
@@ -121,7 +126,11 @@ async def test_run_textbook_ingestion_pipeline_failure_marks_job(
         await run_textbook_ingestion_pipeline(
             job.id,
             str(doc_path),
-            {"subject": "math", "grade_level": "grade-4"},
+            TextbookUploadMetadata(
+                filename="blank.docx",
+                subject=SubjectArea.MATH,
+                grade_level="grade-4",
+            ),
             options=TextbookPipelineOptions(
                 session_factory=session_factory,
                 vector_store=vector_store,  # type: ignore[arg-type]

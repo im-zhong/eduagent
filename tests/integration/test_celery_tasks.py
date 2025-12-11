@@ -6,6 +6,16 @@ from pathlib import Path
 import pytest
 from docx import Document as DocxDocument
 
+from eduagent.api.schemas import (
+    QuestionGenerationResponse,
+    QuizGenerationPayload,
+    QuizGenerationRules,
+    QuizScoringPayload,
+    QuizScoringResponse,
+    SubjectArea,
+    TextbookIngestionResult,
+    TextbookUploadMetadata,
+)
 from eduagent.quiz.enums import JobStatus
 from eduagent.storage.database_service import DatabaseService, QuizJobCreate
 from eduagent.storage.engine import async_engine
@@ -46,66 +56,77 @@ def test_celery_pipeline_runs_with_real_services(tmp_path: Path) -> None:
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             ),
         )
-    metadata = {
-        "subject": "Software Engineering",
-        "grade_level": "Undergraduate",
-        "filename": docx_path.name,
-        "original_filename": "classes.docx",
-        "file_path": str(docx_path),
-    }
+    subject = SubjectArea.COMPUTER_SCIENCE
+    metadata = TextbookUploadMetadata(
+        filename=docx_path.name,
+        original_filename="classes.docx",
+        subject=subject,
+        grade_level="Undergraduate",
+        extra={"file_path": str(docx_path)},
+    )
     job_record = db_service.create_quiz_job(
         QuizJobCreate(
-            source_filename=metadata["filename"],
-            file_path=metadata["file_path"],
-            subject=metadata["subject"],
-            grade_level=metadata["grade_level"],
-            job_payload=metadata,
+            source_filename=metadata.filename,
+            file_path=str(docx_path),
+            subject=metadata.subject.value if metadata.subject else None,
+            grade_level=metadata.grade_level,
+            job_payload={
+                "file_path": str(docx_path),
+                **metadata.model_dump(mode="json"),
+            },
         )
     )
     job_id = job_record.id
     document_job_id: str | None = None
     try:
         asyncio.run(async_engine.dispose())
-        ingestion_result = quiz_tasks.process_textbook_upload(
+        ingestion_result_raw = quiz_tasks.process_textbook_upload(
             job_id,
             stored.object_name,
             metadata,
         )
-        assert ingestion_result["chunks"] >= 1
-        assert ingestion_result["embedded_records"] == ingestion_result["chunks"]
+        ingestion_result = TextbookIngestionResult.model_validate(ingestion_result_raw)
+        assert ingestion_result.chunks >= 1
+        assert ingestion_result.embedded_records == ingestion_result.chunks
 
         job_state = db_service.get_quiz_job(job_id)
         assert job_state.status == JobStatus.COMPLETED
         assert (
             job_state.result_payload["document_job_id"]
-            == ingestion_result["document_job_id"]
+            == ingestion_result.document_job_id
         )
 
-        document_job_id = ingestion_result["document_job_id"]
+        document_job_id = ingestion_result.document_job_id
         assert isinstance(document_job_id, str)
         document_job = db_service.get_document_job(document_job_id)
-        assert document_job.total_chunks == ingestion_result["chunks"]
+        assert document_job.total_chunks == ingestion_result.chunks
 
         total_questions = 3
         asyncio.run(async_engine.dispose())
-        quiz_payload = quiz_tasks.generate_quiz(
+        quiz_payload_raw = quiz_tasks.generate_quiz(
             job_id,
-            {
-                "quiz_rules": {"total_questions": total_questions},
-                "subject": metadata["subject"],
-            },
+            QuizGenerationPayload(
+                job_id=document_job_id,
+                subject=subject,
+                rules=QuizGenerationRules(total_questions=total_questions),
+            ),
         )
-        assert len(quiz_payload["questions"]) == total_questions
+        quiz_payload = QuestionGenerationResponse.model_validate(quiz_payload_raw)
+        assert len(quiz_payload.questions) == total_questions
 
         asyncio.run(async_engine.dispose())
-        scoring = quiz_tasks.score_quiz_quality(
+        scoring_raw = quiz_tasks.score_quiz_quality(
             job_id,
-            {
-                "questions": quiz_payload["questions"],
-                "rules": quiz_payload["rules"],
-            },
+            QuizScoringPayload(
+                job_id=job_id,
+                questions=[
+                    question.model_dump() for question in quiz_payload.questions
+                ],
+                rules={"total_questions": total_questions},
+            ),
         )
-        assert 0 <= scoring["quality"] <= 1
+        scoring = QuizScoringResponse.model_validate(scoring_raw)
+        assert 0 <= scoring.quality <= 1
     finally:
         db_service.delete_quiz_job(job_id)
         if document_job_id:

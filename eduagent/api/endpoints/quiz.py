@@ -8,14 +8,18 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from eduagent.api.schemas import (
+    QuizEvaluationPayload,
     QuizEvaluationRequest,
+    QuizGenerationPayload,
     QuizGenerationRequest,
     QuizJobDetailResponse,
     QuizJobHandleResponse,
+    QuizScoringPayload,
     QuizScoringRequest,
     QuizWorkflowRequest,
     QuizWorkflowResponse,
     SubjectArea,
+    TextbookUploadMetadata,
 )
 from eduagent.documents.repository import DocumentRepository
 from eduagent.logger import get_logger
@@ -118,17 +122,20 @@ async def upload_textbook_for_quiz(
         },
     )
     upload_task = cast(SupportsDelay, process_textbook_upload)
+    metadata = TextbookUploadMetadata(
+        filename=stored_object.object_name,
+        original_filename=original_filename,
+        subject=subject,
+        grade_level=grade_level,
+        extra={
+            "content_type": file.content_type or "application/octet-stream",
+            "object_id": stored_object.object_id,
+        },
+    )
     task = upload_task.delay(
         job.id,
         stored_object.object_id,
-        {
-            "subject": subject.value,
-            "grade_level": grade_level,
-            "filename": stored_object.object_name,
-            "original_filename": original_filename,
-            "content_type": file.content_type,
-            "object_id": stored_object.object_id,
-        },
+        metadata,
     )
     await repo.set_task_id(job.id, _extract_task_id(task))
     dto = await repo.to_dto(job)
@@ -219,10 +226,15 @@ async def request_quiz_generation(
             detail="Ingestion job has not completed",
         )
 
-    generation_payload = request.model_dump(mode="json")
+    generation_payload = QuizGenerationPayload(
+        job_id=request.ingestion_job_id,
+        query=request.query,
+        rules=request.quiz_rules,
+        subject=request.subject,
+    )
     job = await repo.create_generation_job(
         parent_job_id=request.ingestion_job_id,
-        payload=generation_payload,
+        payload=generation_payload.model_dump(mode="json"),
     )
     generation_task = cast(SupportsDelay, generate_quiz)
     task = generation_task.delay(job.id, generation_payload)
@@ -271,10 +283,13 @@ async def request_quiz_evaluation(
             detail="Quiz generation job has not completed",
         )
 
-    evaluation_payload = request.model_dump(mode="json")
+    evaluation_payload = QuizEvaluationPayload(
+        job_id=request.quiz_job_id,
+        answers=request.answers,
+    )
     job = await repo.create_evaluation_job(
         parent_job_id=request.quiz_job_id,
-        payload=evaluation_payload,
+        payload=evaluation_payload.model_dump(mode="json"),
     )
     evaluation_task = cast(SupportsDelay, evaluate_answers)
     task = evaluation_task.delay(job.id, evaluation_payload)
@@ -306,12 +321,17 @@ async def request_quiz_scoring(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Quiz job not found"
         )
+    scoring_payload = QuizScoringPayload(
+        job_id=request.quiz_job_id,
+        questions=request.questions,
+        rules=request.rules,
+    )
     job = await repo.create_scoring_job(
         parent_job_id=request.quiz_job_id,
-        payload=request.model_dump(mode="json"),
+        payload=scoring_payload.model_dump(mode="json"),
     )
     scoring_task = cast(SupportsDelay, score_quiz_quality)
-    task = scoring_task.delay(job.id, request.model_dump(mode="json"))
+    task = scoring_task.delay(job.id, scoring_payload)
     await repo.set_task_id(job.id, _extract_task_id(task))
     dto = await repo.to_dto(job)
     if dto is None:  # pragma: no cover

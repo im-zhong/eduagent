@@ -313,6 +313,40 @@ class QuizWorkflowResponse(BaseModel):
     evaluation: dict[str, Any] = Field(default_factory=dict)
 
 
+class TextbookUploadMetadata(BaseModel):
+    filename: str
+    original_filename: str | None = None
+    subject: SubjectArea | None = None
+    grade_level: str | None = None
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
+class TextbookIngestionResult(BaseModel):
+    document_job_id: str
+    chunks: int
+    embedded_records: int
+    subject: SubjectArea | None = None
+    grade_level: str | None = None
+
+
+class QuizGenerationPayload(BaseModel):
+    job_id: str
+    query: str | None = None
+    rules: QuizGenerationRules = Field(default_factory=_create_default_quiz_rules)
+    subject: SubjectArea | None = None
+
+
+class QuizEvaluationPayload(BaseModel):
+    job_id: str
+    answers: list[QuizAnswerItem]
+
+
+class QuizScoringPayload(BaseModel):
+    job_id: str
+    questions: list[dict[str, Any]]
+    rules: dict[str, Any] | None = None
+
+
 # ============ User & Platform Management Schemas ============
 class UserCreateRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)

@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 
+from eduagent.api.schemas import QuizScoringPayload, QuizScoringResponse
 from eduagent.quiz.enums import JobStatus
 from eduagent.quiz.models import QuizPipelineJob
 from eduagent.quiz.repository import QuizJobRepository
@@ -77,13 +78,14 @@ async def test_score_quiz_quality_updates_job(
         "eduagent.tasks.quiz.QuizScoringService",
         lambda: stub_service,
     )
-    payload = {
-        "quiz_job_id": job_id,
-        "questions": [{"prompt": "Q1", "answer": "A1"}],
-        "rules": {"total_questions": 1},
-    }
-    result = await asyncio.to_thread(score_quiz_quality, job_id, payload)
-    assert math.isclose(result["quality"], stub_service.result.quality, rel_tol=1e-6)
+    payload = QuizScoringPayload(
+        job_id=job_id,
+        questions=[{"prompt": "Q1", "answer": "A1"}],
+        rules={"total_questions": 1},
+    )
+    result_raw = await asyncio.to_thread(score_quiz_quality, job_id, payload)
+    result = QuizScoringResponse.model_validate(result_raw)
+    assert math.isclose(result.quality, stub_service.result.quality, rel_tol=1e-6)
     saved_job = await _fetch_job(job_id)
     assert saved_job.status == JobStatus.COMPLETED.value
     assert saved_job.result_payload["quality"] == stub_service.result.quality
