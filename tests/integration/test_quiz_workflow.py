@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -10,9 +10,9 @@ import pytest
 from eduagent.documents.repository import DocumentRepository
 from eduagent.documents.services import EmbeddingBackend
 from eduagent.quiz.workflow import (
-    QuizGenerationWorkflow,
-    QuizWorkflowConfig,
     QuizWorkflowRunner,
+    ReActQuizWorkflow,
+    ReActWorkflowConfig,
 )
 from eduagent.storage.engine import async_engine, async_session_maker
 from eduagent.storage.milvus_store import EmbeddingRecord, milvus_store
@@ -28,21 +28,17 @@ def _fixed_vector() -> list[float]:
     return [0.01 * ((index % 7) + 1) for index in range(milvus_store.dim)]
 
 
-@dataclass
-class _StaticResponse:
-    content: str
+class _StubLLM:
+    def __init__(self, responses: list[Any]) -> None:
+        self._responses = responses
 
-
-class _StaticLLM:
-    def __init__(self) -> None:
-        self.payload = [
-            {"prompt": "What is photosynthesis?", "answer": "The plant energy cycle."},
-            {"prompt": "Why is sunlight important?", "answer": "It powers growth."},
-        ]
-
-    def invoke(self, messages: list[Any]) -> _StaticResponse:
-        assert messages  # ensure prompt is forwarded
-        return _StaticResponse(json.dumps(self.payload))
+    def invoke(self, messages: list[Any]) -> SimpleNamespace:
+        assert messages  # ensure prompt forwarded
+        if not self._responses:
+            msg = "No stub responses available"
+            raise AssertionError(msg)
+        payload = self._responses.pop(0)
+        return SimpleNamespace(content=json.dumps(payload, ensure_ascii=False))
 
 
 class _FixedEmbedder(EmbeddingBackend):
@@ -120,12 +116,23 @@ async def test_quiz_workflow_runner_persists_artifact() -> None:
     job_id, chunk_records = await _seed_ingestion_job()
     vector = _fixed_vector()
     _insert_vectors(job_id, chunk_records, vector)
-    workflow = QuizGenerationWorkflow(
-        QuizWorkflowConfig(
+    llm_responses = [
+        {"thought": "需要检索知识", "action": "retrieve"},
+        {"status": "continue", "feedback": "没有题目"},
+        {"thought": "生成题目", "action": "generate"},
+        [
+            {"prompt": "什么是光合作用？", "answer": "植物利用光能制造有机物的过程。"},
+            {"prompt": "光合作用的主要产物？", "answer": "葡萄糖和氧气。"},
+        ],
+        {"status": "finish", "feedback": "题目完成"},
+    ]
+    workflow = ReActQuizWorkflow(
+        ReActWorkflowConfig(
             vector_store=milvus_store,
             embedder=_FixedEmbedder(vector),
-            llm=_StaticLLM(),
+            llm=_StubLLM(llm_responses),
             retrieval_limit=3,
+            max_iterations=5,
         )
     )
     async with async_session_maker() as session:
@@ -133,7 +140,10 @@ async def test_quiz_workflow_runner_persists_artifact() -> None:
         runner = QuizWorkflowRunner(repository=repo, workflow=workflow)
         result = await runner.run(job_id, "Generate a biology quiz")
         assert result["ingestion_job_id"] == job_id
-        assert len(result["questions"]) == EXPECTED_QUESTION_COUNT
+        assert (
+            len(cast(list[dict[str, str]], result["questions"]))
+            == EXPECTED_QUESTION_COUNT
+        )
         artifacts = await repo.list_artifacts(job_id)
         assert artifacts
         latest = artifacts[-1]

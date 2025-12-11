@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from eduagent.documents.repository import DocumentRepository
-from eduagent.quiz.workflow import QuizGraphState, QuizWorkflowRunner
+from eduagent.quiz.workflow import QuizWorkflowRunner
 from eduagent.user.models import Base
 
 
@@ -24,13 +23,20 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
         await engine.dispose()
 
 
-@dataclass
 class StaticWorkflow:
-    state: QuizGraphState
+    def __init__(self, payload: dict[str, object]) -> None:
+        self.payload = payload
+        self.calls: list[tuple[str, str | None, str]] = []
 
-    def run(self, prompt: str, ingestion_job_id: str | None = None) -> QuizGraphState:
-        _ = (prompt, ingestion_job_id)
-        return self.state
+    def run(
+        self,
+        prompt: str,
+        ingestion_job_id: str | None = None,
+        *,
+        language: str = "zh",
+    ) -> dict[str, object]:
+        self.calls.append((prompt, ingestion_job_id, language))
+        return self.payload
 
 
 @pytest.mark.asyncio
@@ -48,7 +54,7 @@ async def test_quiz_workflow_runner_persists_artifact(
         runner = QuizWorkflowRunner(
             repository=repo,
             workflow=StaticWorkflow(
-                state={
+                {
                     "questions": [{"prompt": "Q1", "answer": "A1"}],
                     "answers": [{"prompt": "Q1", "answer": "A1"}],
                     "evaluation": {"total": 1, "approved": 1},
@@ -69,9 +75,7 @@ async def test_quiz_workflow_runner_missing_job(
         repo = DocumentRepository(session)
         runner = QuizWorkflowRunner(
             repository=repo,
-            workflow=StaticWorkflow(
-                state={"questions": [], "answers": [], "evaluation": {}}
-            ),
+            workflow=StaticWorkflow({"questions": [], "answers": [], "evaluation": {}}),
         )
         with pytest.raises(ValueError, match="Ingestion job not found"):
             await runner.run("missing", "prompt")
