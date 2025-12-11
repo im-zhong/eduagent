@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
@@ -30,7 +32,15 @@ class QuizWorkflowProtocol(Protocol):
         ingestion_job_id: str | None = None,
         *,
         language: str = "zh",
+        callback: Callable[[ReActEvent], None] | None = None,
     ) -> dict[str, Any]: ...
+
+
+@dataclass
+class ReActEvent:
+    phase: str
+    job_id: str | None
+    payload: dict[str, Any]
 
 
 class ReActAgentState(TypedDict, total=False):
@@ -49,6 +59,7 @@ class ReActAgentState(TypedDict, total=False):
     iterations: int
     final_output: dict[str, Any]
     tool_counts: dict[str, int]
+    references: list[dict[str, Any]]
 
 
 @dataclass
@@ -72,6 +83,7 @@ class ReActQuizWorkflow:
         self.embedder = self.config.embedder or EmbeddingBackend()
         self.llm = self.config.llm or get_chat_model()
         self.graph: ReActGraphRunnable = self._build_graph()
+        self._callback: Callable[[ReActEvent], None] | None = None
 
     def _config_from_settings(self) -> ReActWorkflowConfig:
         workflow_settings = settings.quiz_workflow
@@ -117,11 +129,34 @@ class ReActQuizWorkflow:
         workflow_logger.info(
             f"react phase={phase} | job={job_id} | details={details}",
         )
+        if self._callback is not None:
+            plan_text = str(details.get("plan") or state.get("plan") or "")
+            snapshot: dict[str, Any] = {
+                "thought": details.get("thought") or state.get("thought"),
+                "action": details.get("action") or state.get("action"),
+                "observation": details.get("observation") or state.get("observation"),
+                "plan": plan_text,
+                "todo": self._todo_from_plan(plan_text),
+                "tool_usage": state.get("tool_counts", {}),
+                "references": state.get("references", []),
+            }
+            snapshot.update(details)
+            event = ReActEvent(phase=phase, job_id=job_id, payload=snapshot)
+            self._callback(event)
 
     def _record_tool_usage(self, state: ReActAgentState, action: str) -> dict[str, int]:
         counts = dict(state.get("tool_counts") or {})
         counts[action] = counts.get(action, 0) + 1
         return counts
+
+    def _todo_from_plan(self, plan: str) -> list[str]:
+        if not plan:
+            return []
+        return [
+            segment.strip()
+            for segment in re.split(r"[；;。\n]", plan)
+            if segment.strip()
+        ]
 
     def run(
         self,
@@ -129,6 +164,7 @@ class ReActQuizWorkflow:
         ingestion_job_id: str | None = None,
         *,
         language: str | None = None,
+        callback: Callable[[ReActEvent], None] | None = None,
     ) -> dict[str, Any]:
         resolved_language = language or self.config.default_language
         initial_state: ReActAgentState = {
@@ -139,22 +175,29 @@ class ReActQuizWorkflow:
             "draft_questions": [],
             "iterations": 0,
             "tool_counts": {},
+            "references": [],
         }
-        final_state = self.graph.invoke(initial_state)
-        if "final_output" not in final_state:
-            final_state = self._finalize_step(final_state)
-        result = final_state.get("final_output")
-        if isinstance(result, dict):
-            return result
-        return {
-            "questions": final_state.get("draft_questions", []),
-            "answers": final_state.get("draft_questions", []),
-            "evaluation": {
-                "feedback": str(final_state.get("critique", "")),
-                "tool_usage": dict(final_state.get("tool_counts") or {}),
-            },
-            "ingestion_job_id": ingestion_job_id,
-        }
+        previous_callback = self._callback
+        self._callback = callback
+        try:
+            final_state = self.graph.invoke(initial_state)
+            if "final_output" not in final_state:
+                final_state = self._finalize_step(final_state)
+            result = final_state.get("final_output")
+            if isinstance(result, dict):
+                return result
+            return {
+                "questions": final_state.get("draft_questions", []),
+                "answers": final_state.get("draft_questions", []),
+                "evaluation": {
+                    "feedback": str(final_state.get("critique", "")),
+                    "tool_usage": dict(final_state.get("tool_counts") or {}),
+                    "references": final_state.get("references", []),
+                },
+                "ingestion_job_id": ingestion_job_id,
+            }
+        finally:
+            self._callback = previous_callback
 
     def _plan_step(self, state: ReActAgentState) -> ReActAgentState:
         messages = [
@@ -260,6 +303,7 @@ class ReActQuizWorkflow:
         evaluation = {
             "feedback": str(state.get("critique", "")),
             "tool_usage": dict(state.get("tool_counts") or {}),
+            "references": list(state.get("references") or []),
         }
         output = {
             "questions": draft,
@@ -301,13 +345,25 @@ class ReActQuizWorkflow:
 
         filtered = [hit for hit in hits if matches_job(hit)]
         chunks: list[str] = []
+        references: list[dict[str, Any]] = []
         for hit in filtered:
+            metadata = cast(dict[str, Any] | None, hit.get("metadata")) or {}
             text_value = hit.get("text")
             if isinstance(text_value, str):
                 chunks.append(text_value)
+                references.append(
+                    {
+                        "text": text_value,
+                        "metadata": metadata,
+                        "id": metadata.get(
+                            "chunk_index", metadata.get("ingestion_job_id")
+                        ),
+                    }
+                )
         return {
             "context_chunks": chunks or state.get("context_chunks", []),
             "observation": f"检索到{len(chunks)}段内容",
+            "references": references or state.get("references", []),
         }
 
     def _summarize_context(self, state: ReActAgentState) -> ReActAgentState:

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from eduagent.documents.repository import DocumentRepository
-from eduagent.quiz.workflow import QuizWorkflowRunner
+from eduagent.quiz.workflow import QuizWorkflowRunner, ReActEvent
 from eduagent.user.models import Base
 
 
@@ -34,7 +34,10 @@ class StaticWorkflow:
         ingestion_job_id: str | None = None,
         *,
         language: str = "zh",
+        callback: Callable[[ReActEvent], None] | None = None,
     ) -> dict[str, object]:
+        if callback is not None:
+            callback(ReActEvent("plan", ingestion_job_id, {"mock": True}))
         self.calls.append((prompt, ingestion_job_id, language))
         return self.payload
 
