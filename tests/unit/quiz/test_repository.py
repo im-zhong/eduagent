@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from itertools import pairwise
 
 import pytest
 import pytest_asyncio
@@ -55,3 +56,39 @@ async def test_quiz_job_repository_lifecycle(session: AsyncSession) -> None:
     assert dto.job_type == JobType.INGESTION
     assert dto.result_payload["chunks"] == CHUNK_COUNT
     assert dto.task_id == "celery-task-id"
+
+
+@pytest.mark.asyncio
+async def test_list_completed_ingestions_filters_and_orders(
+    session: AsyncSession,
+) -> None:
+    repo = QuizJobRepository(session)
+    completed_ids: list[str] = []
+    for idx in range(3):
+        job = await repo.create_ingestion_job(
+            source_filename=f"lesson-{idx}.docx",
+            file_path=f"/tmp/lesson-{idx}.docx",
+            subject=f"subject-{idx}",
+            grade_level=f"grade-{idx}",
+            payload={},
+        )
+        status = JobStatus.COMPLETED if idx != 1 else JobStatus.PROCESSING
+        await repo.update_status(
+            job.id,
+            status,
+            result={"document_job_id": f"doc-{idx}"},
+        )
+        if status is JobStatus.COMPLETED:
+            completed_ids.append(job.id)
+
+    jobs = await repo.list_completed_ingestions(limit=5)
+    job_ids = [job.id for job in jobs]
+    assert set(job_ids) == set(completed_ids)
+    assert all(job.job_type == JobType.INGESTION.value for job in jobs)
+    assert all(job.status == JobStatus.COMPLETED.value for job in jobs)
+    for earlier, later in pairwise(jobs):
+        assert earlier.updated_at >= later.updated_at
+
+    most_recent = await repo.list_completed_ingestions(limit=1)
+    assert len(most_recent) == 1
+    assert most_recent[0].id in completed_ids

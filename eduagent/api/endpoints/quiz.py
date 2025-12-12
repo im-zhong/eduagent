@@ -7,7 +7,16 @@ from typing import Annotated, Any, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +25,8 @@ from eduagent.api.schemas import (
     QuizEvaluationRequest,
     QuizGenerationPayload,
     QuizGenerationRequest,
+    QuizIngestionListItem,
+    QuizIngestionListResponse,
     QuizJobDetailResponse,
     QuizJobHandleResponse,
     QuizScoringPayload,
@@ -82,6 +93,22 @@ def _detail_response(dto: QuizJobDTO) -> QuizJobDetailResponse:
         result=dto.result_payload or {},
         error_message=dto.error_message,
     )
+
+
+def _extract_document_job_id(payload: dict[str, Any] | None) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get("document_job_id")
+    return value if isinstance(value, str) else None
+
+
+def _subject_from_string(raw: str | None) -> SubjectArea | None:
+    if raw is None:
+        return None
+    try:
+        return SubjectArea(raw)
+    except ValueError:  # pragma: no cover - unexpected but safe guard
+        return None
 
 
 @router.post(
@@ -168,6 +195,32 @@ async def get_quiz_job(
         )
     api_logger.debug(f"Returning quiz job details for {job_id}")
     return _detail_response(dto)
+
+
+@router.get(
+    "/ingestions",
+    response_model=QuizIngestionListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_completed_ingestions_endpoint(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> QuizIngestionListResponse:
+    repo = QuizJobRepository(session)
+    jobs = await repo.list_completed_ingestions(limit=limit)
+    items = [
+        QuizIngestionListItem(
+            job_id=job.id,
+            subject=_subject_from_string(job.subject),
+            grade_level=job.grade_level,
+            source_filename=job.source_filename,
+            document_job_id=_extract_document_job_id(job.result_payload),
+            updated_at=job.updated_at,
+        )
+        for job in jobs
+    ]
+    api_logger.debug("Listed %d completed ingestion jobs", len(items))
+    return QuizIngestionListResponse(items=items)
 
 
 @router.post(

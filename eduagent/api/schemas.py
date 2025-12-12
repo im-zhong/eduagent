@@ -218,6 +218,19 @@ class QuizJobDetailResponse(QuizJobHandleResponse):
     error_message: str | None = None
 
 
+class QuizIngestionListItem(BaseModel):
+    job_id: str
+    subject: SubjectArea | None = None
+    grade_level: str | None = None
+    source_filename: str | None = None
+    document_job_id: str | None = None
+    updated_at: datetime
+
+
+class QuizIngestionListResponse(BaseModel):
+    items: list[QuizIngestionListItem]
+
+
 def _create_difficulty_distribution() -> dict[DifficultyLevel, int]:
     return {}
 

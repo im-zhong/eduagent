@@ -5,6 +5,8 @@ Provides interface to communicate with the backend API
 
 from __future__ import annotations
 
+import json
+from collections.abc import Generator
 from typing import Any
 
 import requests
@@ -116,6 +118,39 @@ class EduAgentAPIClient:
     def run_quiz_workflow(self, ingestion_job_id: str, prompt: str) -> dict[str, Any]:
         payload = {"ingestion_job_id": ingestion_job_id, "prompt": prompt}
         return self._make_request(defs.api.QUIZ_WORKFLOW, "POST", json_data=payload)
+
+    def stream_quiz_workflow(
+        self, ingestion_job_id: str, prompt: str
+    ) -> Generator[dict[str, Any]]:
+        url = f"{self.base_url}{defs.api.QUIZ_WORKFLOW_STREAM}"
+        payload = {"ingestion_job_id": ingestion_job_id, "prompt": prompt}
+        try:
+            with requests.post(
+                url,
+                json=payload,
+                headers=self._headers(),
+                timeout=None,
+                stream=True,
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines(decode_unicode=True):
+                    if not line:
+                        continue
+                    if not line.startswith("data: "):
+                        continue
+                    data = line.replace("data: ", "", 1)
+                    if not data.strip():
+                        continue
+                    try:
+                        yield json.loads(data)
+                    except json.JSONDecodeError:
+                        yield {
+                            "phase": "error",
+                            "payload": {"message": "Unable to parse server event data"},
+                        }
+                        return
+        except requests.RequestException as exc:
+            yield {"phase": "error", "payload": {"message": str(exc)}}
 
     def get_performance_analytics(
         self, student_id: str, time_period: str

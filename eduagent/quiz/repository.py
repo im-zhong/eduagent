@@ -142,3 +142,26 @@ class QuizJobRepository:
         if job is None:
             return None
         return QuizJobDTO.model_validate(job)
+
+    async def list_completed_ingestions(
+        self,
+        *,
+        limit: int = 20,
+    ) -> list[QuizPipelineJob]:
+        """Return recently updated ingestion jobs that have completed."""
+        normalized_limit = max(1, limit)
+        stmt = (
+            select(QuizPipelineJob)
+            .where(
+                QuizPipelineJob.job_type == JobType.INGESTION.value,
+                QuizPipelineJob.status == JobStatus.COMPLETED.value,
+            )
+            .order_by(
+                QuizPipelineJob.updated_at.desc(),
+                QuizPipelineJob.created_at.desc(),
+                QuizPipelineJob.id.desc(),
+            )
+            .limit(normalized_limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
