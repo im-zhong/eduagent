@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, TypedDict
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from eduagent.documents.models import DocumentChunk, DocumentIngestionJob, QuizArtifact
@@ -150,3 +150,10 @@ class DocumentRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def delete_all(self) -> None:
+        """Remove all ingestion data (artifacts, chunks, jobs) from the database."""
+        await self.session.execute(delete(QuizArtifact))
+        await self.session.execute(delete(DocumentChunk))
+        await self.session.execute(delete(DocumentIngestionJob))
+        await self.session.commit()

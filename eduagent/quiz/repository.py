@@ -11,10 +11,11 @@ from eduagent.quiz.schemas import QuizJobDTO
 
 
 class JobCreateData(TypedDict, total=False):
+    id: str
     source_filename: str
     file_path: str
-    subject: str
-    grade_level: str
+    subject: str | None
+    grade_level: str | None
     parent_job_id: str
     job_payload: dict[str, Any]
 
@@ -25,67 +26,71 @@ class QuizJobRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def create_ingestion_job(
+    async def create_ingestion_job(  # noqa: PLR0913
         self,
         *,
         source_filename: str,
         file_path: str,
-        subject: str,
-        grade_level: str,
+        subject: str | None,
+        grade_level: str | None,
         payload: dict[str, Any],
+        job_id: str | None = None,
     ) -> QuizPipelineJob:
-        return await self._create_job(
-            JobType.INGESTION,
-            {
-                "source_filename": source_filename,
-                "file_path": file_path,
-                "subject": subject,
-                "grade_level": grade_level,
-                "job_payload": payload,
-            },
-        )
+        job_data: JobCreateData = {
+            "source_filename": source_filename,
+            "file_path": file_path,
+            "subject": subject,
+            "grade_level": grade_level,
+            "job_payload": payload,
+        }
+        if job_id is not None:
+            job_data["id"] = job_id
+        return await self._create_job(JobType.INGESTION, job_data)
 
     async def create_generation_job(
         self,
         *,
         parent_job_id: str,
         payload: dict[str, Any],
+        job_id: str | None = None,
     ) -> QuizPipelineJob:
-        return await self._create_job(
-            JobType.QUIZ_GENERATION,
-            {
-                "parent_job_id": parent_job_id,
-                "job_payload": payload,
-            },
-        )
+        job_data: JobCreateData = {
+            "parent_job_id": parent_job_id,
+            "job_payload": payload,
+        }
+        if job_id is not None:
+            job_data["id"] = job_id
+        return await self._create_job(JobType.QUIZ_GENERATION, job_data)
 
     async def create_evaluation_job(
         self,
         *,
         parent_job_id: str,
         payload: dict[str, Any],
+        job_id: str | None = None,
     ) -> QuizPipelineJob:
-        return await self._create_job(
-            JobType.ANSWER_EVALUATION,
-            {
-                "parent_job_id": parent_job_id,
-                "job_payload": payload,
-            },
-        )
+        job_data: JobCreateData = {
+            "parent_job_id": parent_job_id,
+            "job_payload": payload,
+        }
+        if job_id is not None:
+            job_data["id"] = job_id
+        return await self._create_job(JobType.ANSWER_EVALUATION, job_data)
 
     async def create_scoring_job(
         self,
         *,
         parent_job_id: str,
         payload: dict[str, Any],
+        job_id: str | None = None,
     ) -> QuizPipelineJob:
-        return await self._create_job(
-            JobType.QUIZ_SCORING,
-            {
-                "parent_job_id": parent_job_id,
-                "job_payload": payload,
-            },
-        )
+        job_data: JobCreateData = {
+            "parent_job_id": parent_job_id,
+            "job_payload": payload,
+        }
+        if job_id is not None:
+            job_data["id"] = job_id
+        return await self._create_job(JobType.QUIZ_SCORING, job_data)
 
     async def _create_job(
         self,
@@ -94,7 +99,9 @@ class QuizJobRepository:
     ) -> QuizPipelineJob:
         job_kwargs: dict[str, Any] = dict(job_data)
         payload = cast(dict[str, Any] | None, job_kwargs.pop("job_payload", None))
+        job_id = cast(str | None, job_kwargs.pop("id", None))
         job = QuizPipelineJob(
+            id=job_id,
             job_type=job_type.value,
             job_payload=payload or {},
             **job_kwargs,

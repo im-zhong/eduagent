@@ -23,3 +23,35 @@ flowchart TD
     style H fill:#d0e0e3
     style L fill:#f4cccc
 ```
+
+## Ingestion Job
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Teacher
+    participant Streamlit as Streamlit UI
+    participant FastAPI as FastAPI /quiz/upload
+    participant MinIO as MinIO Storage
+    participant Repo as QuizJobRepository
+    participant Celery as Celery Worker
+    participant DocsSvc as Document Service
+    participant Milvus as Milvus Vector Store
+
+    Teacher->>Streamlit: Upload DOCX/PDF + metadata
+    Streamlit->>FastAPI: POST /api/v1/quiz/upload (multipart form)
+    FastAPI->>MinIO: store_file(file, metadata)
+    MinIO-->>FastAPI: object_id / location
+    FastAPI->>Repo: create_ingestion_job(subject, grade, payload)
+    Repo-->>FastAPI: job record (status=pending)
+    FastAPI-->>Teacher: 202 Accepted + ingestion job_id
+    FastAPI->>Celery: enqueue process_textbook_upload(job_id, object_id, metadata)
+
+    Celery->>DocsSvc: download & parse DOCX/PDF
+    DocsSvc->>Milvus: embed chunks + store vectors
+    DocsSvc-->>Celery: ingestion artifact ids
+    Celery->>Repo: update_status(job_id, completed, result=document_job_id)
+    Repo-->>Celery: updated job record
+    Celery-->>Teacher: (via later status check) job marked completed with document_job_id
+
+```

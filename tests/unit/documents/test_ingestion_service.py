@@ -14,6 +14,8 @@ from eduagent.documents.repository import DocumentRepository
 from eduagent.documents.services import DocxIngestionService
 from eduagent.user.models import Base
 
+MAX_CHUNK_CHARS = 2048
+
 
 def _write_docx(path: Path, paragraphs: list[str]) -> None:
     doc = DocxDocument()
@@ -62,6 +64,7 @@ async def test_docx_ingestion_service_success(
     chunks = await repo.list_chunks(job.id)
     assert len(chunks) == job.total_chunks
     assert any("paragraphs" in chunk.chunk_metadata for chunk in chunks)
+    assert all(len(chunk.content) <= MAX_CHUNK_CHARS for chunk in chunks)
 
 
 @pytest.mark.asyncio
@@ -112,3 +115,53 @@ async def test_docx_ingestion_service_reads_table_content(
     )
     assert job.status == "completed"
     assert job.total_chunks > 0
+    chunks = await repo.list_chunks(job.id)
+    assert all(len(chunk.content) <= MAX_CHUNK_CHARS for chunk in chunks)
+
+
+@pytest.mark.asyncio
+async def test_docx_ingestion_service_ingests_real_doc(
+    session: AsyncSession, tmp_path: Path
+) -> None:
+    source_path = Path("docs/classes.docx")
+    # if not source_path.exists():  # pragma: no cover - defensive
+    #     pytest.skip("docs/classes.docx not available")
+    target = tmp_path / "classes.docx"
+    target.write_bytes(source_path.read_bytes())
+
+    repo = DocumentRepository(session)
+    service = DocxIngestionService(repo)
+    job = await service.ingest_docx(
+        source_filename="classes.docx",
+        file_path=str(target),
+        subject="language",
+        grade_level="reference",
+        metadata={"source": "docs/classes.docx"},
+    )
+    assert job.status == "completed"
+    assert job.total_chunks > 0
+    chunks = await repo.list_chunks(job.id)
+    assert chunks
+    assert all(len(chunk.content) <= MAX_CHUNK_CHARS for chunk in chunks)
+
+
+@pytest.mark.asyncio
+async def test_document_repository_delete_all_data(
+    session: AsyncSession, tmp_path: Path
+) -> None:
+    file_path = tmp_path / "cleanup.docx"
+    _write_docx(file_path, ["示例课程内容", "第二段文本"])
+    repo = DocumentRepository(session)
+    service = DocxIngestionService(repo, chunk_size=40, chunk_overlap=0)
+    job = await service.ingest_docx(
+        source_filename="cleanup.docx",
+        file_path=str(file_path),
+        subject="general",
+        grade_level="demo",
+    )
+    assert job.total_chunks > 0
+
+    await repo.delete_all()
+
+    remaining_jobs = await session.execute(select(DocumentIngestionJob))
+    assert remaining_jobs.scalars().all() == []

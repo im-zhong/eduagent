@@ -78,7 +78,10 @@ class MilvusVectorStore:
                 FieldSchema(
                     name="text",
                     dtype=DataType.VARCHAR,
-                    max_length=2048,
+                    # Milvus validates UTF-8 byte length, so Chinese chunks
+                    # (~3 bytes per character) can overflow quickly; ensure
+                    # this max accommodates byte counts, not character counts.
+                    max_length=4096,
                 ),
                 FieldSchema(
                     name="embedding",
@@ -117,13 +120,13 @@ class MilvusVectorStore:
         if not records:
             return 0
         collection = self.ensure_collection()
+        collection_obj = cast(Any, collection)
         insert_data = [
             [record.record_id for record in records],
             [record.text for record in records],
             [record.embedding for record in records],
             [record.metadata for record in records],
         ]
-        collection_obj = cast(Any, collection)
         collection_obj.insert(insert_data)
         return len(records)
 

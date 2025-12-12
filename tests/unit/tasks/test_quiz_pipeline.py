@@ -8,11 +8,15 @@ import pytest_asyncio
 from docx import Document as DocxDocument
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from eduagent.api.schemas import SubjectArea, TextbookUploadMetadata
+from eduagent.api.schemas import (
+    SubjectArea,
+    TextbookIngestionResult,
+    TextbookUploadMetadata,
+)
 from eduagent.documents.services import EmbeddingBackend
 from eduagent.quiz.enums import JobStatus
 from eduagent.quiz.repository import QuizJobRepository
-from eduagent.storage.milvus_store import EmbeddingRecord
+from eduagent.storage.milvus_store import EmbeddingRecord, milvus_store
 from eduagent.tasks.quiz import (
     TextbookPipelineOptions,
     run_textbook_ingestion_pipeline,
@@ -36,13 +40,14 @@ class MemoryVectorStore:
         return len(records)
 
 
+# 在做单元测试的时候，使用这个是合理的，但是集成测试的时候不应该使用这个了
 class DeterministicEmbeddingBackend(EmbeddingBackend):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [[float(idx)] * 3 for idx, _ in enumerate(texts, start=1)]
+        return [[float(idx)] * 2048 for idx, _ in enumerate(texts, start=1)]
 
     def embed_query(self, text: str) -> list[float]:
         _ = text
-        return [1.0] * 3
+        return [1.0] * 2048
 
 
 @pytest_asyncio.fixture
@@ -143,3 +148,115 @@ async def test_run_textbook_ingestion_pipeline_failure_marks_job(
         failed_job = await repo.get_job(job.id)
         assert failed_job is not None
         assert failed_job.status == JobStatus.FAILED.value
+
+
+@pytest.mark.asyncio
+async def test_run_textbook_ingestion_pipeline_without_existing_job(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    job_id = "standalone-job"
+    doc_path = tmp_path / "standalone.docx"
+    _write_docx(doc_path, ["独立运行测试", "第二段"])
+    # vector_store = MemoryVectorStore()
+    summary = await run_textbook_ingestion_pipeline(
+        job_id,
+        "docs/classes.docx",
+        TextbookUploadMetadata(
+            filename="classes.docx",
+            subject=SubjectArea.GENERAL,
+            grade_level="demo",
+        ),
+        options=TextbookPipelineOptions(
+            session_factory=session_factory,
+            vector_store=milvus_store,  # type: ignore[arg-type]
+            embedding_backend=DeterministicEmbeddingBackend(),
+        ),
+    )
+    assert summary.chunks > 0
+    assert summary.embedded_records == summary.chunks
+    async with session_factory() as session:
+        repo = QuizJobRepository(session)
+        created_job = await repo.get_job(job_id)
+        assert created_job is not None
+        assert created_job.status == JobStatus.COMPLETED.value
+
+
+@pytest.mark.asyncio
+async def test_run_textbook_ingestion_pipeline_returns_cached_result(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    job_id = "cached-job"
+    async with session_factory() as session:
+        repo = QuizJobRepository(session)
+        job = await repo.create_ingestion_job(
+            source_filename="existing.docx",
+            file_path="existing.docx",
+            subject="science",
+            grade_level="grade-8",
+            payload={},
+            job_id=job_id,
+        )
+        cached = TextbookIngestionResult(
+            document_job_id="doc-1",
+            chunks=5,
+            embedded_records=5,
+            subject=SubjectArea.SCIENCE,
+            grade_level="grade-8",
+        )
+        await repo.update_status(
+            job.id,
+            JobStatus.COMPLETED,
+            result=cached.model_dump(mode="json"),
+        )
+    vector_store = MemoryVectorStore()
+    summary = await run_textbook_ingestion_pipeline(
+        job_id,
+        "ignored.docx",
+        TextbookUploadMetadata(
+            filename="existing.docx",
+            subject=SubjectArea.SCIENCE,
+            grade_level="grade-8",
+        ),
+        options=TextbookPipelineOptions(
+            session_factory=session_factory,
+            vector_store=vector_store,  # type: ignore[arg-type]
+            embedding_backend=DeterministicEmbeddingBackend(),
+        ),
+    )
+    assert summary.document_job_id == "doc-1"
+    assert vector_store.records == []
+
+
+@pytest.mark.asyncio
+async def test_run_textbook_ingestion_pipeline_exits_if_processing(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    job_id = "processing-job"
+    async with session_factory() as session:
+        repo = QuizJobRepository(session)
+        job = await repo.create_ingestion_job(
+            source_filename="processing.docx",
+            file_path="processing.docx",
+            subject="science",
+            grade_level="grade-8",
+            payload={},
+            job_id=job_id,
+        )
+        await repo.update_status(job.id, JobStatus.PROCESSING)
+    vector_store = MemoryVectorStore()
+    with pytest.raises(RuntimeError, match="already processing"):
+        await run_textbook_ingestion_pipeline(
+            job_id,
+            "ignored.docx",
+            TextbookUploadMetadata(
+                filename="processing.docx",
+                subject=SubjectArea.SCIENCE,
+                grade_level="grade-8",
+            ),
+            options=TextbookPipelineOptions(
+                session_factory=session_factory,
+                vector_store=vector_store,  # type: ignore[arg-type]
+                embedding_backend=DeterministicEmbeddingBackend(),
+            ),
+        )

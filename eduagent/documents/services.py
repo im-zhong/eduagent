@@ -28,10 +28,24 @@ class DocxIngestionService:
         chunk_overlap: int = 100,
     ) -> None:
         self.repository = repository
+        # Custom splitter: LangChain's defaults only break on ASCII punctuation, so
+        # long Chinese runs blew past Milvus' 2048-char VARCHAR cap. The rewritten
+        # splitter below includes common Chinese delimiters (。, ，, ；, …) plus an
+        # empty-string fallback so we always hard-wrap before indexing.
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
+            chunk_size=chunk_size,  # tokens ≠ chars; Chinese chars are dense
             chunk_overlap=chunk_overlap,
-            separators=["\n\n", "\n", " "],
+            separators=[
+                "\n\n",
+                "\n",
+                "。",
+                "！",
+                "？",  # Chinese sentence end
+                "；",
+                "，",
+                " ",  # fallback
+                "",
+            ],
         )
 
     def _load_text(self, file_path: str | Path) -> list[str]:
@@ -142,13 +156,19 @@ class ChunkEmbeddingService:
             return 0
         texts = [chunk.content for chunk in chunks]
         embeddings = self.embedder.embed_documents(texts)
+        print(f"embeder: f{self.embedder}")
         if len(embeddings) != len(chunks):
             msg = "Embedding backend returned mismatched vector count"
             raise ValueError(msg)
+
+        def _clip(text: str) -> str:
+            limit = getattr(self.vector_store, "text_limit", 2048)
+            return text[:limit]
+
         records = [
             EmbeddingRecord(
                 record_id=chunk.id,
-                text=chunk.content,
+                text=_clip(chunk.content),
                 embedding=vector,
                 metadata={
                     **chunk.chunk_metadata,
@@ -157,6 +177,8 @@ class ChunkEmbeddingService:
             )
             for chunk, vector in zip(chunks, embeddings, strict=True)
         ]
+        # for record in records:
+        #     assert len(record.embedding) == 2048
         inserted = self.vector_store.insert_records(records)
         for chunk in chunks:
             await self.repository.set_chunk_vector_id(chunk.id, vector_id=chunk.id)

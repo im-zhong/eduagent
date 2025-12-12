@@ -128,6 +128,7 @@ async def upload_textbook_for_quiz(
         f"Received quiz upload request subject={subject.value} grade={grade_level}"
     )
     original_filename = file.filename or "uploaded_textbook"
+    # TODO: could minio be async?
     stored_object = minio_service.store_file(
         file.file,
         filename=original_filename,

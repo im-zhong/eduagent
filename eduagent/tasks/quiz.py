@@ -70,9 +70,13 @@ async def _update_job_status(
     *,
     result: BaseModel | dict[str, Any] | None = None,
     error: str | None = None,
-) -> None:
+) -> bool:
     async with task_session_factory() as session:
         repo = QuizJobRepository(session)
+        job = await repo.get_job(job_id)
+        if job is None:
+            task_logger.warning("Quiz job %s not found; skipping status update", job_id)
+            return False
         serialized_result: dict[str, Any] | None
         if result is None:
             serialized_result = None
@@ -86,6 +90,7 @@ async def _update_job_status(
             result=serialized_result,
             error_message=error,
         )
+        return True
 
 
 async def run_textbook_ingestion_pipeline(
@@ -99,6 +104,17 @@ async def run_textbook_ingestion_pipeline(
 
     options = options or TextbookPipelineOptions()
     session_factory = options.session_factory or task_session_factory
+    metadata_dict = metadata.model_dump(
+        mode="json",
+        exclude={"extra"},
+        exclude_none=True,
+    )
+    metadata_dict.update(metadata.extra)
+    subject_value = (
+        metadata.subject.value
+        if isinstance(metadata.subject, SubjectArea)
+        else metadata.subject
+    )
     async with session_factory() as session:
         quiz_repo = QuizJobRepository(session)
         doc_repo = DocumentRepository(session)
@@ -109,14 +125,33 @@ async def run_textbook_ingestion_pipeline(
             embedder=options.embedding_backend,
         )
 
+        job = await quiz_repo.get_job(job_id)
+        if job is None:
+            job = await quiz_repo.create_ingestion_job(
+                source_filename=metadata.original_filename or metadata.filename,
+                file_path=file_path,
+                subject=subject_value,
+                grade_level=metadata.grade_level,
+                payload=metadata_dict,
+                job_id=job_id,
+            )
+        current_status = JobStatus(job.status)
+        if current_status == JobStatus.PROCESSING:
+            task_logger.info(
+                "Ingestion job %s is already processing; skipping.", job_id
+            )
+            message = f"Ingestion job {job_id} already processing"
+            raise RuntimeError(message)
+        if current_status == JobStatus.COMPLETED and job.result_payload:
+            task_logger.info(
+                "Ingestion job %s already completed; returning cached result.", job_id
+            )
+            try:
+                return TextbookIngestionResult.model_validate(job.result_payload)
+            except Exception:  # pragma: no cover - guard malformed payload
+                pass
         await quiz_repo.update_status(job_id, JobStatus.PROCESSING)
         try:
-            metadata_dict = metadata.model_dump(
-                mode="json",
-                exclude={"extra"},
-                exclude_none=True,
-            )
-            metadata_dict.update(metadata.extra)
             document_job = await ingestion_service.ingest_docx(
                 source_filename=metadata.original_filename or metadata.filename,
                 file_path=file_path,
@@ -147,6 +182,7 @@ async def run_textbook_ingestion_pipeline(
         return result
 
 
+# TODO: 为什么celery task要跑在asyncio里面？
 @celery_app.task(name="eduagent.quiz.process_upload", pydantic=True)
 def process_textbook_upload(
     job_id: str,
