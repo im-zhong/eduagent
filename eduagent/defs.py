@@ -41,6 +41,7 @@ class APIDefs:
     QUIZ_INGESTION_LIST = f"{QUIZ_BASE}/ingestions"
     QUIZ_WORKFLOW = f"{QUIZ_BASE}/workflow"
     QUIZ_WORKFLOW_STREAM = f"{QUIZ_BASE}/workflow/stream"
+    QUIZ_RAG_CHAT_STREAM = f"{QUIZ_BASE}/rag/chat/stream"
     QUIZ_GENERATE = f"{QUIZ_BASE}/generate"
     QUIZ_EVALUATE = f"{QUIZ_BASE}/evaluate"
     QUIZ_SCORE = f"{QUIZ_BASE}/score"
@@ -68,6 +69,7 @@ class UIDefs:
         "Ingestion Lab",
         "Workflow Runner",
         "Agent Workflow",
+        "RAG Chat",
         "Async Pipeline",
         "Scoring Studio",
         "Analytics Monitor",

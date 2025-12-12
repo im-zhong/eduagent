@@ -31,6 +31,8 @@ else:  # pragma: no cover
 REFERENCE_PREVIEW_LIMIT = 200
 INGESTION_CACHE_KEY = "agent_ingestion_cache"
 AGENT_STREAM_STATE_KEY = "agent_stream_state"
+RAG_STREAM_STATE_KEY = "rag_stream_state"
+RAG_CHAT_HISTORY_KEY = "rag_chat_history"
 AgentPlaceholderMap = dict[str, DeltaGenerator]
 
 
@@ -247,6 +249,28 @@ def _get_agent_stream_state() -> AgentStreamState:
     return state
 
 
+def _get_rag_stream_state() -> AgentStreamState:
+    existing = st.session_state.get(RAG_STREAM_STATE_KEY)
+    if isinstance(existing, dict):
+        return cast(AgentStreamState, existing)
+    state: AgentStreamState = AgentStreamState(events=[], status="idle")
+    st.session_state[RAG_STREAM_STATE_KEY] = state
+    return state
+
+
+def _get_rag_chat_history() -> list[dict[str, Any]]:
+    history = st.session_state.get(RAG_CHAT_HISTORY_KEY)
+    if isinstance(history, list):
+        return cast(list[dict[str, Any]], history)
+    st.session_state[RAG_CHAT_HISTORY_KEY] = []
+    return []
+
+
+def _reset_rag_chat_session() -> None:
+    st.session_state.pop(RAG_CHAT_HISTORY_KEY, None)
+    st.session_state.pop(RAG_STREAM_STATE_KEY, None)
+
+
 def _start_agent_stream(
     client: EduAgentAPIClient, ingestion_job_id: str, prompt: str
 ) -> None:
@@ -267,6 +291,30 @@ def _start_agent_stream(
     thread = threading.Thread(
         target=_worker, name=f"react-stream-{run_id}", daemon=True
     )
+    thread.start()
+
+
+def _start_rag_chat_stream(
+    client: EduAgentAPIClient,
+    ingestion_job_ids: list[str],
+    history: list[dict[str, Any]],
+    question: str,
+) -> None:
+    run_id = uuid4().hex
+    event_queue: Queue[dict[str, Any]] = Queue()
+    state = create_stream_state(run_id, event_queue)
+    state["ingestion_job_id"] = ",".join(ingestion_job_ids)
+    state["prompt"] = question
+    st.session_state[RAG_STREAM_STATE_KEY] = state
+
+    def _worker() -> None:
+        for event in client.stream_rag_chat(ingestion_job_ids, history, question):
+            event_queue.put(event)
+            phase = str(event.get("phase") or "")
+            if phase in {"error", "final"}:
+                break
+
+    thread = threading.Thread(target=_worker, name=f"rag-stream-{run_id}", daemon=True)
     thread.start()
 
 
@@ -396,6 +444,66 @@ def _render_agent_log(
     )
 
 
+def _render_rag_stream(state: AgentStreamState) -> None:
+    st.subheader("Agent 状态")
+    placeholders: AgentPlaceholderMap = {
+        "status": st.empty(),
+        "todo": st.empty(),
+        "references": st.empty(),
+        "answer": st.empty(),
+        "log": st.empty(),
+    }
+    events = list(state.get("events") or [])
+    status = state.get("status") or "idle"
+    if status == "running":
+        _schedule_agent_autorefresh()
+    if not events:
+        placeholders["status"].info("等待提问")
+        return
+    latest = events[-1]
+    phase = str(latest.get("phase") or "")
+    payload = cast(dict[str, Any], latest.get("payload") or {})
+    if status == "error":
+        placeholders["status"].error(payload.get("message") or "RAG agent error")
+    elif status == "completed":
+        placeholders["status"].success("Agent 完成回答")
+    else:
+        placeholders["status"].info(f"阶段：{phase}")
+    todo_items = [
+        str(item)
+        for item in cast(list[Any] | None, payload.get("todo")) or []
+        if str(item).strip()
+    ]
+    if todo_items:
+        placeholders["todo"].markdown(
+            "**进行中的任务**\n" + "\n".join(f"- {item}" for item in todo_items)
+        )
+    else:
+        placeholders["todo"].markdown("**进行中的任务**\n- (空)")
+    references = cast(list[dict[str, Any]], payload.get("references") or [])
+    placeholders["references"].markdown(
+        _reference_icons_html(references), unsafe_allow_html=True
+    )
+    answer = payload.get("answer")
+    if isinstance(answer, str) and answer.strip():
+        placeholders["answer"].markdown(f"**回答草稿**\n\n{answer}")
+    final_payload = state.get("result") or {}
+    if final_payload:
+        final_answer = final_payload.get("answer")
+        if isinstance(final_answer, str):
+            placeholders["answer"].markdown(f"**最终回答**\n\n{final_answer}")
+        final_refs = cast(list[dict[str, Any]], final_payload.get("references") or [])
+        placeholders["references"].markdown(
+            _reference_icons_html(final_refs), unsafe_allow_html=True
+        )
+        final_history = final_payload.get("history")
+        if isinstance(final_history, list):
+            st.session_state[RAG_CHAT_HISTORY_KEY] = cast(
+                list[dict[str, Any]], final_history
+            )
+    _render_agent_log(events, placeholders["log"])
+
+
 def page_overview(client: EduAgentAPIClient) -> None:
     st.title("EduAgent Operations Console")
     st.write(
@@ -508,6 +616,55 @@ def page_agent_workflow(client: EduAgentAPIClient) -> None:
     _render_agent_stream(stream_state)
 
 
+def page_rag_chat(client: EduAgentAPIClient) -> None:
+    st.title("LangGraph RAG Chat")
+    st.caption(
+        "选择一个或多个已完成的笔记本，使用中文提问，实时查看助教的检索与回答过程。"
+    )
+    _ensure_reference_style()
+    stream_state = _get_rag_stream_state()
+    drain_stream_queue(stream_state)
+    control_cols = st.columns([3, 1, 1])
+    with control_cols[1]:
+        refresh_clicked = st.button("刷新笔记本", key="rag_refresh")
+    with control_cols[2]:
+        if st.button("清空对话", key="rag_reset"):
+            _reset_rag_chat_session()
+            stream_state = _get_rag_stream_state()
+    catalog_items = _load_ingestion_catalog(client, refresh=refresh_clicked)
+    if catalog_items:
+        job_map = {cast(str, item["job_id"]): item for item in catalog_items}
+        selected_jobs = st.multiselect(
+            "选择知识库笔记",
+            options=list(job_map.keys()),
+            default=st.session_state.get("rag_selected_jobs") or [],
+            format_func=lambda job: _format_ingestion_label(job, job_map[job]),
+        )
+        st.session_state["rag_selected_jobs"] = selected_jobs
+    else:
+        selected_jobs = []
+    st.markdown("---")
+    history = _get_rag_chat_history()
+    for turn in history:
+        role = "assistant" if turn.get("role") == "assistant" else "user"
+        with st.chat_message(role):
+            st.markdown(turn.get("content") or "")
+    question = st.chat_input("请输入中文问题")
+    if question:
+        if not selected_jobs:
+            st.warning("请至少选择一个已完成的笔记本。")
+        else:
+            prior_history = history.copy()
+            updated_history = [*history, {"role": "user", "content": question}]
+            st.session_state[RAG_CHAT_HISTORY_KEY] = updated_history
+            _start_rag_chat_stream(client, selected_jobs, prior_history, question)
+            rerun = getattr(st, "experimental_rerun", None)
+            if callable(rerun):
+                rerun()
+    st.markdown("---")
+    _render_rag_stream(stream_state)
+
+
 def page_async_pipeline(client: EduAgentAPIClient) -> None:
     st.title("Async Quiz Pipeline")
     st.subheader("Generation Job")
@@ -616,6 +773,7 @@ PAGE_HANDLERS = {
     "Ingestion Lab": page_ingestion_lab,
     "Workflow Runner": page_workflow_runner,
     "Agent Workflow": page_agent_workflow,
+    "RAG Chat": page_rag_chat,
     "Async Pipeline": page_async_pipeline,
     "Scoring Studio": page_scoring_studio,
     "Analytics Monitor": page_analytics,

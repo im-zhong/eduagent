@@ -55,5 +55,4 @@ async def provide_feedback(request: FeedbackRequest) -> FeedbackResponse:
         score=0.8,
         detailed_feedback="Good attempt with minor errors",
         suggestions=["Review concept X", "Practice more problems"],
-        recommended_practice=["Exercise 1", "Exercise 2"],
     )

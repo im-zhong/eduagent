@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from dataclasses import asdict
 from typing import Annotated, Any, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
@@ -20,6 +21,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from eduagent.agents import ConversationTurn, RagMemoryAgent, default_rag_memory_agent
 from eduagent.api.schemas import (
     QuizEvaluationPayload,
     QuizEvaluationRequest,
@@ -33,6 +35,7 @@ from eduagent.api.schemas import (
     QuizScoringRequest,
     QuizWorkflowRequest,
     QuizWorkflowResponse,
+    RagChatStreamRequest,
     SubjectArea,
     TextbookUploadMetadata,
 )
@@ -69,6 +72,10 @@ def _extract_task_id(result: AsyncResult) -> str:
 
 router = APIRouter(prefix="/quiz", tags=["Quiz Pipeline"])
 api_logger: LoggerProtocol = get_logger(__name__, component="api.quiz")
+
+
+def get_rag_agent() -> RagMemoryAgent:
+    return default_rag_memory_agent()
 
 
 def _handle_response(dto: QuizJobDTO) -> QuizJobHandleResponse:
@@ -383,6 +390,104 @@ async def _react_event_stream(
         await stream_task
 
     return _generator()
+
+
+@router.post(
+    "/rag/chat/stream",
+    response_class=StreamingResponse,
+)
+async def stream_rag_chat(
+    request: RagChatStreamRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    agent: Annotated[RagMemoryAgent, Depends(get_rag_agent)],
+) -> StreamingResponse:
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question must not be empty",
+        )
+    if not request.ingestion_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one ingestion job must be provided",
+        )
+    repo = QuizJobRepository(session)
+    for job_id in request.ingestion_ids:
+        job = await repo.get_job(job_id)
+        if job is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ingestion job {job_id} not found",
+            )
+        if JobType(job.job_type) != JobType.INGESTION:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Job {job_id} is not an ingestion job",
+            )
+        if JobStatus(job.status) != JobStatus.COMPLETED:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ingestion job {job_id} is not completed",
+            )
+    catalog_history: list[ConversationTurn] = [
+        cast(ConversationTurn, turn.model_dump()) for turn in request.history
+    ]
+    event_stream = await _rag_chat_event_stream(
+        agent,
+        question,
+        request.ingestion_ids,
+        catalog_history,
+    )
+    return StreamingResponse(event_stream, media_type="text/event-stream")
+
+
+async def _rag_chat_event_stream(
+    agent: RagMemoryAgent,
+    question: str,
+    ingestion_ids: list[str],
+    history: list[ConversationTurn],
+) -> AsyncIterator[str]:
+    queue: asyncio.Queue[str] = asyncio.Queue()
+
+    def _callback(phase: str, payload: dict[str, Any]) -> None:
+        queue.put_nowait(json.dumps({"phase": phase, "payload": payload}))
+
+    async def _generator() -> AsyncIterator[str]:
+        while True:
+            chunk = await queue.get()
+            if chunk == "__DONE__":
+                break
+            yield f"data: {chunk}\n\n"
+
+    async def _run_agent() -> None:
+        try:
+            result = await asyncio.to_thread(
+                agent.run,
+                question,
+                ingestion_ids=ingestion_ids,
+                history=history,
+                callback=_callback,
+            )
+            await queue.put(json.dumps({"phase": "final", "payload": asdict(result)}))
+        except Exception as exc:  # pragma: no cover - defensive guard
+            api_logger.exception("RAG chat agent failed")
+            await queue.put(
+                json.dumps(
+                    {"phase": "error", "payload": {"message": str(exc)}},
+                )
+            )
+        finally:
+            await queue.put("__DONE__")
+
+    runner_task = asyncio.create_task(_run_agent())
+
+    async def _wrapped_generator() -> AsyncIterator[str]:
+        async for chunk in _generator():
+            yield chunk
+        await runner_task
+
+    return _wrapped_generator()
 
 
 @router.post(

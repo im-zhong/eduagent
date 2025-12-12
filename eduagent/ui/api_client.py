@@ -161,6 +161,44 @@ class EduAgentAPIClient:
         except requests.RequestException as exc:
             yield {"phase": "error", "payload": {"message": str(exc)}}
 
+    def stream_rag_chat(
+        self,
+        ingestion_ids: list[str],
+        history: list[dict[str, Any]],
+        question: str,
+    ) -> Generator[dict[str, Any]]:
+        url = f"{self.base_url}{defs.api.QUIZ_RAG_CHAT_STREAM}"
+        payload = {
+            "ingestion_ids": ingestion_ids,
+            "history": history,
+            "question": question,
+        }
+        try:
+            with requests.post(
+                url,
+                json=payload,
+                headers=self._headers(),
+                timeout=None,
+                stream=True,
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data = line.replace("data: ", "", 1)
+                    if not data.strip():
+                        continue
+                    try:
+                        yield json.loads(data)
+                    except json.JSONDecodeError:
+                        yield {
+                            "phase": "error",
+                            "payload": {"message": "Unable to parse server event data"},
+                        }
+                        return
+        except requests.RequestException as exc:
+            yield {"phase": "error", "payload": {"message": str(exc)}}
+
     def get_performance_analytics(
         self, student_id: str, time_period: str
     ) -> dict[str, Any]:

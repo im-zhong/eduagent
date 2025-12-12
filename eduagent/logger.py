@@ -23,6 +23,10 @@ class LoggerProtocol(Protocol):
 
     def error(self, __message: object, /, *args: object, **kwargs: object) -> None: ...
 
+    def exception(
+        self, __message: object, /, *args: object, **kwargs: object
+    ) -> None: ...
+
 
 Logger = LoggerProtocol
 

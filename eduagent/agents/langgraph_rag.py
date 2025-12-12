@@ -4,6 +4,7 @@ from __future__ import annotations
 # pyright: reportUnknownMemberType=false
 # pyright: reportUnknownArgumentType=false
 # pyright: reportUnknownVariableType=false
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast
 
@@ -87,6 +88,7 @@ class RagMemoryAgent:
         )
         self.llm = self.config.llm or get_chat_model()
         self.graph: RagGraphRunnable = self._build_graph()
+        self._callback: Callable[[str, dict[str, Any]], None] | None = None
 
     def _build_graph(self) -> RagGraphRunnable:
         builder: StateGraph = StateGraph(RagChatState)
@@ -120,6 +122,11 @@ class RagMemoryAgent:
                 },
             )
         state["history"] = history
+        self._emit(
+            "ingest",
+            history=history,
+            todo=["检索知识", "生成回答"],
+        )
         return state
 
     def _retrieve_step(self, state: RagChatState) -> RagChatState:
@@ -145,6 +152,11 @@ class RagMemoryAgent:
             }
             for hit in results
         ]
+        self._emit(
+            "retrieve",
+            references=state["references"],
+            todo=["生成回答"],
+        )
         return state
 
     def _respond_step(self, state: RagChatState) -> RagChatState:
@@ -184,6 +196,13 @@ class RagMemoryAgent:
         )
         state["history"] = history
         state["answer"] = answer_text
+        self._emit(
+            "respond",
+            answer=answer_text,
+            references=state.get("references", []),
+            history=history,
+            todo=[],
+        )
         return state
 
     def _metadata_expr(self, ingestion_ids: list[str] | None) -> str | None:
@@ -222,18 +241,29 @@ class RagMemoryAgent:
         *,
         ingestion_ids: list[str] | None = None,
         history: list[ConversationTurn] | None = None,
+        callback: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> RagChatResult:
         initial_state: RagChatState = {
             "question": question,
             "ingestion_ids": ingestion_ids or [],
             "history": list(history or []),
         }
-        final_state = self.graph.invoke(initial_state)
+        previous_callback = self._callback
+        self._callback = callback
+        try:
+            final_state = self.graph.invoke(initial_state)
+        finally:
+            self._callback = previous_callback
         return RagChatResult(
             answer=final_state.get("answer", ""),
             references=final_state.get("references", []),
             history=final_state.get("history", []),
         )
+
+    def _emit(self, phase: str, **payload: object) -> None:
+        if self._callback is None:
+            return
+        self._callback(phase, payload)
 
 
 def default_rag_memory_agent() -> RagMemoryAgent:

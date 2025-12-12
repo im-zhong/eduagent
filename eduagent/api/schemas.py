@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -198,7 +198,21 @@ class FeedbackResponse(BaseModel):
     score: float
     detailed_feedback: str
     suggestions: list[str]
-    recommended_practice: list[str]
+
+
+class RagChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+def _rag_history_default() -> list[RagChatTurn]:
+    return []
+
+
+class RagChatStreamRequest(BaseModel):
+    question: str
+    ingestion_ids: list[str] = Field(default_factory=list)
+    history: list[RagChatTurn] = Field(default_factory=_rag_history_default)
 
 
 # ============ Quiz Pipeline Schemas ============
