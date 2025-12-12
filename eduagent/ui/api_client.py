@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -42,11 +42,14 @@ class EduAgentAPIClient:
         self,
         endpoint: str,
         method: str = "GET",
-        json_data: dict[str, Any] | None = None,
-        data: dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
+        **request_kwargs: object,
     ) -> dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
+        options = cast(dict[str, Any], request_kwargs)
+        json_data = options.pop("json_data", None)
+        data = options.pop("data", None)
+        files = options.pop("files", None)
+        params = options.pop("params", None)
         try:
             response = requests.request(
                 method=method.upper(),
@@ -54,8 +57,10 @@ class EduAgentAPIClient:
                 json=json_data,
                 data=data,
                 files=files,
+                params=params,
                 headers=self._headers(),
                 timeout=self.timeout,
+                **options,
             )
         except requests.RequestException as exc:
             return {"error": f"Request failed: {exc!s}"}
@@ -118,6 +123,10 @@ class EduAgentAPIClient:
     def run_quiz_workflow(self, ingestion_job_id: str, prompt: str) -> dict[str, Any]:
         payload = {"ingestion_job_id": ingestion_job_id, "prompt": prompt}
         return self._make_request(defs.api.QUIZ_WORKFLOW, "POST", json_data=payload)
+
+    def list_ingestion_jobs(self, limit: int = 50) -> dict[str, Any]:
+        params = {"limit": limit}
+        return self._make_request(defs.api.QUIZ_INGESTION_LIST, params=params)
 
     def stream_quiz_workflow(
         self, ingestion_job_id: str, prompt: str

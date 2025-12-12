@@ -7,16 +7,21 @@ from __future__ import annotations
 
 import html
 import json
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 import streamlit as st
 
 from eduagent.api.schemas import SubjectArea
 from eduagent.defs import defs
-from eduagent.quiz.enums import JobStatus, JobType
 from eduagent.ui.api_client import EduAgentAPIClient
 
 REFERENCE_PREVIEW_LIMIT = 200
+INGESTION_CACHE_KEY = "agent_ingestion_cache"
+
+
+class _IngestionCache(TypedDict):
+    items: list[dict[str, Any]]
+
 
 DEFAULT_API_URL = "http://api.eduagent:8000"
 
@@ -68,13 +73,6 @@ def _json_text_area(label: str, key: str) -> list[dict[str, Any]]:
         return filtered
     st.warning("Expecting a JSON list. Ignoring input.")
     return []
-
-
-def _get_tracked_ingestions() -> dict[str, dict[str, Any]]:
-    key = "agent_ingestions"
-    if key not in st.session_state:
-        st.session_state[key] = {}
-    return cast(dict[str, dict[str, Any]], st.session_state[key])
 
 
 def _format_ingestion_label(job_id: str, detail: dict[str, Any]) -> str:
@@ -143,66 +141,85 @@ def _reference_icons_html(references: list[dict[str, Any]]) -> str:
     return "".join(icons)
 
 
-def _rerun_app() -> None:
-    rerun = getattr(st, "rerun", None)
-    if callable(rerun):
-        rerun()
-        return
-    legacy_rerun = getattr(st, "experimental_rerun", None)
-    if callable(legacy_rerun):
-        legacy_rerun()
+def _load_ingestion_catalog(
+    client: EduAgentAPIClient, *, refresh: bool = False
+) -> list[dict[str, Any]]:
+    existing = st.session_state.get(INGESTION_CACHE_KEY)
+    cache: _IngestionCache
+    if isinstance(existing, dict) and "items" in existing:
+        cache = cast(_IngestionCache, existing)
+    else:
+        cache = {"items": []}
+    if refresh or not cache["items"]:
+        with st.spinner("Fetching completed ingestion notebooks..."):
+            response = client.list_ingestion_jobs()
+        if "error" in response:
+            st.error(response["error"])
+            items: list[dict[str, Any]] = []
+        else:
+            raw_items = cast(list[Any], response.get("items") or [])
+            typed_items: list[dict[str, Any]] = [
+                cast(dict[str, Any], obj) for obj in raw_items if isinstance(obj, dict)
+            ]
+            items = []
+            for entry in typed_items:
+                job_identifier = entry.get("job_id")
+                if isinstance(job_identifier, str) and job_identifier:
+                    items.append(entry)
+        cache = {"items": items}
+        st.session_state[INGESTION_CACHE_KEY] = cache
+    return cache["items"]
 
 
-def _render_ingestion_form(
-    client: EduAgentAPIClient, catalog: dict[str, dict[str, Any]]
-) -> None:
-    with st.form("agent_ingestion_form"):
-        ingestion_input = st.text_input(
-            "Add a completed ingestion job ID",
-            key="agent_ingestion_input",
-            placeholder="Example: 7ac26000-6b8a-4a37-b3e1-08b9380d4e74",
+def _filter_ingestion_items(
+    items: list[dict[str, Any]], query: str | None
+) -> list[dict[str, Any]]:
+    if not query or not query.strip():
+        return items
+    needle = query.strip().lower()
+    filtered: list[dict[str, Any]] = []
+    for item in items:
+        haystack = " ".join(
+            str(value or "").lower()
+            for value in (
+                item.get("subject"),
+                item.get("grade_level"),
+                item.get("source_filename"),
+                item.get("job_id"),
+            )
         )
-        submitted = st.form_submit_button("Add notebook")
-        if not submitted:
-            return
-        if not ingestion_input.strip():
-            st.warning("Enter the job id before submitting.")
-            return
-        job_id = ingestion_input.strip()
-        with st.spinner("Fetching job metadata..."):
-            detail = client.get_quiz_job(job_id)
-        if "error" in detail:
-            st.error(detail["error"])
-            return
-        if str(detail.get("job_type")) != JobType.INGESTION.value:
-            st.error("The job is not an ingestion record.")
-            return
-        if str(detail.get("status")) != JobStatus.COMPLETED.value:
-            st.warning("Job has not completed yet.")
-            return
-        catalog[job_id] = {
-            "subject": detail.get("subject"),
-            "grade_level": detail.get("grade_level"),
-            "result": detail.get("result", {}),
-        }
-        st.success("Notebook added to the list.")
+        if needle in haystack:
+            filtered.append(item)
+    return filtered
 
 
-def _render_ingestion_selector(catalog: dict[str, dict[str, Any]]) -> str | None:
-    if not catalog:
-        st.info("No notebooks stored yet. Add a completed ingestion job first.")
+def _render_ingestion_selector(items: list[dict[str, Any]]) -> str | None:
+    if not items:
+        st.info(
+            "No completed ingestion jobs available. Upload a notebook in Ingestion Lab first."
+        )
         return None
-    job_ids = list(catalog.keys())
+    filter_value = st.text_input(
+        "Filter notebooks (subject, grade, filename)",
+        key="agent_ingestion_filter",
+    )
+    filtered = _filter_ingestion_items(items, filter_value)
+    if not filtered:
+        st.warning("No notebooks match the current filter.")
+        return None
+    job_map = {cast(str, item.get("job_id")): item for item in filtered}
+    options = list(job_map.keys())
     selected_job = st.selectbox(
-        "Tracked notebooks",
-        options=job_ids,
-        format_func=lambda job: _format_ingestion_label(job, catalog[job]),
+        "Available ingestion notebooks",
+        options=options,
+        format_func=lambda job: _format_ingestion_label(job, job_map[job]),
         key="agent_selected_ingestion",
     )
-    if st.button("Remove selected notebook") and selected_job in catalog:
-        catalog.pop(selected_job, None)
-        st.success("Removed.")
-        _rerun_app()
+    selection = job_map.get(selected_job)
+    if selection:
+        st.caption(
+            f"Source: {selection.get('source_filename') or 'unknown'} | Document job: {selection.get('document_job_id') or 'n/a'}"
+        )
     return selected_job
 
 
@@ -285,9 +302,11 @@ def page_agent_workflow(client: EduAgentAPIClient) -> None:
         " tool usage, todo list, and references streamed via SSE."
     )
     _ensure_reference_style()
-    catalog = _get_tracked_ingestions()
-    _render_ingestion_form(client, catalog)
-    selected_job = _render_ingestion_selector(catalog)
+    control_cols = st.columns([3, 1])
+    with control_cols[1]:
+        refresh_clicked = st.button("Refresh notebooks", key="agent_refresh")
+    catalog_items = _load_ingestion_catalog(client, refresh=refresh_clicked)
+    selected_job = _render_ingestion_selector(catalog_items)
 
     prompt = st.text_area(
         "Agent instruction (write in Chinese)",
