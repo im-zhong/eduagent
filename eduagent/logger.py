@@ -1,5 +1,6 @@
 # logger
 # https://loguru.readthedocs.io/en/stable/overview.html
+
 from __future__ import annotations
 
 from typing import Protocol, cast

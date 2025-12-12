@@ -7,16 +7,31 @@ from __future__ import annotations
 
 import html
 import json
-from typing import Any, TypedDict, cast
+import threading
+from queue import Queue
+from typing import TYPE_CHECKING, Any, TypedDict, cast
+from uuid import uuid4
 
 import streamlit as st
 
 from eduagent.api.schemas import SubjectArea
 from eduagent.defs import defs
 from eduagent.ui.api_client import EduAgentAPIClient
+from eduagent.ui.react_stream import (
+    AgentStreamState,
+    create_stream_state,
+    drain_stream_queue,
+)
+
+if TYPE_CHECKING:
+    from streamlit.delta_generator import DeltaGenerator
+else:  # pragma: no cover
+    DeltaGenerator = object
 
 REFERENCE_PREVIEW_LIMIT = 200
 INGESTION_CACHE_KEY = "agent_ingestion_cache"
+AGENT_STREAM_STATE_KEY = "agent_stream_state"
+AgentPlaceholderMap = dict[str, DeltaGenerator]
 
 
 class _IngestionCache(TypedDict):
@@ -223,6 +238,164 @@ def _render_ingestion_selector(items: list[dict[str, Any]]) -> str | None:
     return selected_job
 
 
+def _get_agent_stream_state() -> AgentStreamState:
+    existing = st.session_state.get(AGENT_STREAM_STATE_KEY)
+    if isinstance(existing, dict):
+        return cast(AgentStreamState, existing)
+    state: AgentStreamState = AgentStreamState(events=[], status="idle")
+    st.session_state[AGENT_STREAM_STATE_KEY] = state
+    return state
+
+
+def _start_agent_stream(
+    client: EduAgentAPIClient, ingestion_job_id: str, prompt: str
+) -> None:
+    run_id = uuid4().hex
+    event_queue: Queue[dict[str, Any]] = Queue()
+    state = create_stream_state(run_id, event_queue)
+    state["ingestion_job_id"] = ingestion_job_id
+    state["prompt"] = prompt
+    st.session_state[AGENT_STREAM_STATE_KEY] = state
+
+    def _worker() -> None:
+        for event in client.stream_quiz_workflow(ingestion_job_id, prompt):
+            event_queue.put(event)
+            phase = str(event.get("phase") or "")
+            if phase in {"final", "error"}:
+                break
+
+    thread = threading.Thread(
+        target=_worker, name=f"react-stream-{run_id}", daemon=True
+    )
+    thread.start()
+
+
+def _render_agent_stream(state: AgentStreamState) -> None:
+    st.subheader("Live execution stream")
+    status_placeholder = st.empty()
+    state_cols = st.columns(3)
+    plan_and_references = st.columns((1.3, 1.3, 1))
+    placeholders: AgentPlaceholderMap = {
+        "status": status_placeholder,
+        "thought": state_cols[0].empty(),
+        "action": state_cols[1].empty(),
+        "observation": state_cols[2].empty(),
+        "todo": plan_and_references[0].empty(),
+        "references": plan_and_references[1].empty(),
+        "tools": plan_and_references[2].empty(),
+        "log": st.empty(),
+        "final": st.empty(),
+    }
+
+    events = list(state.get("events") or [])
+    status = state.get("status") or "idle"
+    if status == "running":
+        _schedule_agent_autorefresh()
+
+    if not events:
+        _render_idle_stream(status, placeholders["status"])
+        return
+
+    last_event = events[-1]
+    phase = str(last_event.get("phase") or "")
+    payload = cast(dict[str, Any], last_event.get("payload") or {})
+    _render_status_section(
+        placeholders,
+        status,
+        phase,
+        payload,
+        state.get("result"),
+    )
+    _render_agent_details(payload, placeholders)
+    _render_agent_log(events, placeholders["log"])
+
+
+def _schedule_agent_autorefresh() -> None:
+    autorefresh = getattr(st, "autorefresh", None)
+    if callable(autorefresh):
+        autorefresh(interval=1500, key="agent_stream_autorefresh")
+
+
+def _render_idle_stream(status: str, placeholder: DeltaGenerator) -> None:
+    if status == "running":
+        placeholder.info("Agent is booting...")
+    else:
+        placeholder.info("Agent idle. Submit a prompt to start streaming.")
+
+
+def _render_status_section(
+    placeholders: AgentPlaceholderMap,
+    status: str,
+    phase: str,
+    payload: dict[str, Any],
+    final_result: dict[str, Any] | None,
+) -> None:
+    status_placeholder = placeholders["status"]
+    if status == "error":
+        status_placeholder.error(payload.get("message", "Agent execution failed"))
+    elif status == "completed":
+        status_placeholder.success("Agent finished. Final quiz payload is shown below.")
+        final_payload = final_result or payload
+        placeholders["final"].json(final_payload)
+    else:
+        status_placeholder.info(f"Phase: {phase}")
+
+
+def _render_agent_details(
+    payload: dict[str, Any],
+    placeholders: AgentPlaceholderMap,
+) -> None:
+    placeholders["thought"].markdown(
+        f"**Thought**: {payload.get('thought') or '[none]'}"
+    )
+    placeholders["action"].markdown(
+        f"**Action**: {payload.get('action') or '[pending]'}"
+    )
+    placeholders["observation"].markdown(
+        f"**Observation**: {payload.get('observation') or '[none yet]'}"
+    )
+    todo_items = [
+        str(item)
+        for item in cast(list[Any] | None, payload.get("todo")) or []
+        if str(item).strip()
+    ]
+    if todo_items:
+        todo_markdown = "\n".join(f"- {item}" for item in todo_items)
+        placeholders["todo"].markdown(f"**Todo list**\n{todo_markdown}")
+    else:
+        placeholders["todo"].markdown("**Todo list**\n_none_")
+    references = cast(list[dict[str, Any]], payload.get("references") or [])
+    placeholders["references"].markdown(
+        _reference_icons_html(references), unsafe_allow_html=True
+    )
+    tool_usage = cast(dict[str, Any], payload.get("tool_usage") or {})
+    if tool_usage:
+        usage_text = " / ".join(f"{key}:{value}" for key, value in tool_usage.items())
+        placeholders["tools"].markdown(f"**Tool usage**: {usage_text}")
+    else:
+        placeholders["tools"].markdown("**Tool usage**: none")
+
+
+def _render_agent_log(
+    events: list[dict[str, Any]], log_placeholder: DeltaGenerator
+) -> None:
+    def _log_entry(event: dict[str, Any]) -> str:
+        phase = str(event.get("phase") or "")
+        payload = cast(dict[str, Any], event.get("payload") or {})
+        excerpt = (
+            payload.get("thought")
+            or payload.get("observation")
+            or payload.get("message")
+            or ""
+        )
+        return f"[{phase}] {excerpt}"
+
+    log_lines = [_log_entry(evt) for evt in events[-8:]]
+    log_placeholder.markdown(
+        "**Event log**\n" + "\n".join(f"- {line}" for line in log_lines)
+    )
+
+
 def page_overview(client: EduAgentAPIClient) -> None:
     st.title("EduAgent Operations Console")
     st.write(
@@ -302,6 +475,8 @@ def page_agent_workflow(client: EduAgentAPIClient) -> None:
         " tool usage, todo list, and references streamed via SSE."
     )
     _ensure_reference_style()
+    stream_state = _get_agent_stream_state()
+    drain_stream_queue(stream_state)
     control_cols = st.columns([3, 1])
     with control_cols[1]:
         refresh_clicked = st.button("Refresh notebooks", key="agent_refresh")
@@ -317,7 +492,6 @@ def page_agent_workflow(client: EduAgentAPIClient) -> None:
         ),
     )
     st.markdown("---")
-    run_container = st.container()
     if st.button(
         "Start ReAct agent",
         type="primary",
@@ -326,82 +500,12 @@ def page_agent_workflow(client: EduAgentAPIClient) -> None:
         if selected_job is None:
             st.error("Please pick a notebook first.")
         else:
-            with run_container:
-                _execute_agent_stream(client, selected_job, prompt.strip())
+            _start_agent_stream(client, selected_job, prompt.strip())
+            rerun = getattr(st, "experimental_rerun", None)
+            if callable(rerun):
+                rerun()
 
-
-def _execute_agent_stream(
-    client: EduAgentAPIClient, ingestion_job_id: str, prompt: str
-) -> None:
-    st.subheader("Live execution stream")
-    status_placeholder = st.empty()
-    state_cols = st.columns(3)
-    thought_placeholder = state_cols[0].empty()
-    action_placeholder = state_cols[1].empty()
-    observation_placeholder = state_cols[2].empty()
-    plan_and_references = st.columns((1.3, 1.3, 1))
-    todo_placeholder = plan_and_references[0].empty()
-    reference_placeholder = plan_and_references[1].empty()
-    tool_placeholder = plan_and_references[2].empty()
-    log_placeholder = st.empty()
-    final_placeholder = st.empty()
-
-    status_placeholder.info("Agent is booting...")
-    log_lines: list[str] = []
-    for event in client.stream_quiz_workflow(ingestion_job_id, prompt):
-        phase = str(event.get("phase") or "")
-        payload = cast(dict[str, Any], event.get("payload") or {})
-        if phase == "error":
-            status_placeholder.error(payload.get("message", "Agent execution failed"))
-            break
-        if phase == "final":
-            status_placeholder.success(
-                "Agent finished. Final quiz payload is shown below."
-            )
-            final_placeholder.json(payload)
-            break
-        status_placeholder.info(f"Phase: {phase}")
-        thought_placeholder.markdown(
-            f"**Thought**: {payload.get('thought') or '[none]'}"
-        )
-        action_placeholder.markdown(
-            f"**Action**: {payload.get('action') or '[pending]'}"
-        )
-        observation_placeholder.markdown(
-            f"**Observation**: {payload.get('observation') or '[none yet]'}"
-        )
-        todo_items = [
-            str(item)
-            for item in cast(list[Any] | None, payload.get("todo")) or []
-            if str(item).strip()
-        ]
-        if todo_items:
-            todo_markdown = "\n".join(f"- {item}" for item in todo_items)
-            todo_placeholder.markdown(f"**Todo list**\n{todo_markdown}")
-        else:
-            todo_placeholder.markdown("**Todo list**\n_none_")
-        references = cast(list[dict[str, Any]], payload.get("references") or [])
-        reference_placeholder.markdown(
-            _reference_icons_html(references), unsafe_allow_html=True
-        )
-        tool_usage = cast(dict[str, Any], payload.get("tool_usage") or {})
-        if tool_usage:
-            usage_text = " / ".join(
-                f"{key}:{value}" for key, value in tool_usage.items()
-            )
-            tool_placeholder.markdown(f"**Tool usage**: {usage_text}")
-        else:
-            tool_placeholder.markdown("**Tool usage**: none")
-        excerpt = (
-            payload.get("thought")
-            or payload.get("observation")
-            or payload.get("message")
-            or ""
-        )
-        log_lines.append(f"[{phase}] {excerpt}")
-        log_placeholder.markdown(
-            "**Event log**\n" + "\n".join(f"- {line}" for line in log_lines[-8:])
-        )
+    _render_agent_stream(stream_state)
 
 
 def page_async_pipeline(client: EduAgentAPIClient) -> None:

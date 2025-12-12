@@ -2,25 +2,18 @@
 # 不应该被配置的常量
 
 
-import os
 from pathlib import Path
 from typing import ClassVar
 
 
 class Pathes:
-    _UPLOADS_ENV: ClassVar[str] = "EDUAGENT_UPLOADS_DIR"
-
     @property
     def log_dir(self) -> Path:
-        path = Path("logs")
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        return self._ensure_dir(Path("logs"))
 
     @property
     def etc_dir(self) -> Path:
-        path = Path("etc")
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        return self._ensure_dir(Path("etc"))
 
     @property
     def default_settings_file(self) -> Path:
@@ -33,27 +26,6 @@ class Pathes:
     def _ensure_dir(self, path: Path) -> Path:
         path.mkdir(parents=True, exist_ok=True)
         return path
-
-    @property
-    def uploads_dir(self) -> Path:
-        candidates: list[Path] = []
-        override = os.getenv(self._UPLOADS_ENV)
-        if override:
-            candidates.append(Path(override))
-        candidates.extend(
-            [
-                Path("data") / "uploads",
-                Path("var") / "uploads",
-                Path.home() / ".cache" / "eduagent" / "uploads",
-            ]
-        )
-        for candidate in candidates:
-            try:
-                return self._ensure_dir(candidate)
-            except PermissionError:
-                continue
-        msg = "Unable to create a writable uploads directory"
-        raise RuntimeError(msg)
 
 
 class APIDefs:
