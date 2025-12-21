@@ -10,11 +10,11 @@ from eduagent.ui.api_client import EduAgentAPIClient
 
 
 def render(client: EduAgentAPIClient) -> None:
-    st.title("Scoring Studio")
-    quiz_job_id = st.text_input("Quiz Job ID for Scoring")
-    questions = common.json_text_area("Questions JSON", "score_questions")
+    st.title("评分工作台")
+    quiz_job_id = st.text_input("需要评分的测验任务 ID")
+    questions = common.json_text_area("题目 JSON", "score_questions")
     rules_text = st.text_area(
-        "Optional Rules JSON",
+        "可选规则 JSON",
         height=120,
         placeholder='{"allow_distractors": true}',
     )
@@ -25,10 +25,10 @@ def render(client: EduAgentAPIClient) -> None:
             if isinstance(parsed, dict):
                 rules = cast(dict[str, Any], parsed)
             else:
-                st.warning("Rules JSON should be an object/dict")
+                st.warning("规则 JSON 需要是对象/字典")
         except json.JSONDecodeError as exc:
-            st.warning(f"Rules JSON invalid: {exc}")
-    if st.button("Score Quiz") and quiz_job_id and questions:
-        with st.spinner("Requesting scoring job..."):
+            st.warning(f"规则 JSON 无效: {exc}")
+    if st.button("开始评分") and quiz_job_id and questions:
+        with st.spinner("正在请求评分任务..."):
             response = client.request_quiz_scoring(quiz_job_id, questions, rules)
         st.json(response)

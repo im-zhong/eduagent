@@ -65,14 +65,14 @@ class UIDefs:
 
     # Navigation options
     TEACHER_NAV_OPTIONS: ClassVar[list[str]] = [
-        "Overview",
-        "Ingestion Lab",
-        "Workflow Runner",
-        "Agent Workflow",
-        "RAG Chat",
-        "Async Pipeline",
-        "Scoring Studio",
-        "Analytics Monitor",
+        "总览",
+        "数据摄取",
+        "工作流运行",
+        "ReAct 代理",
+        "RAG 对话",
+        "异步流水线",
+        "评分工作台",
+        "数据监控",
     ]
 
     STUDENT_NAV_OPTIONS: ClassVar[list[str]] = []

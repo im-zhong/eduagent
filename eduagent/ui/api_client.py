@@ -63,7 +63,7 @@ class EduAgentAPIClient:
                 **options,
             )
         except requests.RequestException as exc:
-            return {"error": f"Request failed: {exc!s}"}
+            return {"error": f"请求失败：{exc!s}"}
 
         if response.status_code in HTTP_SUCCESS_CODES:
             try:

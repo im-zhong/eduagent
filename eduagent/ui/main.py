@@ -63,48 +63,48 @@ def _load_api_client() -> EduAgentAPIClient:
 
 
 def _configure_sidebar(client: EduAgentAPIClient) -> None:
-    st.sidebar.header("API Configuration")
+    st.sidebar.header("API 配置")
     stored_url = st.session_state.get("api_base_url") or client.base_url
     base_url = st.sidebar.text_input(
-        "Service Base URL",
+        "服务基础地址",
         value=stored_url,
     )
     token = cast(str | None, st.session_state.get("service_jwt"))
     if token:
-        st.sidebar.caption("Service JWT loaded from Streamlit config.")
+        st.sidebar.caption("已从 Streamlit 配置加载服务 JWT。")
     else:
-        st.sidebar.warning("No service JWT found in Streamlit config.")
-    if st.sidebar.button("Apply Settings"):
+        st.sidebar.warning("未在 Streamlit 配置中找到服务 JWT。")
+    if st.sidebar.button("应用配置"):
         effective_base = base_url or DEFAULT_API_URL
         st.session_state.api_base_url = effective_base
         client.configure(effective_base, token or None)
-        st.sidebar.success("Configuration updated.")
+        st.sidebar.success("配置已更新。")
 
 
 PAGE_HANDLERS = {
-    "Overview": overview.render,
-    "Ingestion Lab": ingestion_lab.render,
-    "Workflow Runner": workflow_runner.render,
-    "Agent Workflow": agent_workflow.render,
-    "RAG Chat": rag_chat.render,
-    "Async Pipeline": async_pipeline.render,
-    "Scoring Studio": scoring_studio.render,
-    "Analytics Monitor": analytics_monitor.render,
+    "总览": overview.render,
+    "数据摄取": ingestion_lab.render,
+    "工作流运行": workflow_runner.render,
+    "ReAct 代理": agent_workflow.render,
+    "RAG 对话": rag_chat.render,
+    "异步流水线": async_pipeline.render,
+    "评分工作台": scoring_studio.render,
+    "数据监控": analytics_monitor.render,
 }
 
 
 def main() -> None:
     st.set_page_config(
-        page_title="EduAgent Operations Console",
+        page_title="EduAgent 运维控制台",
         page_icon=defs.ui.PAGE_ICON,
         layout="wide",
     )
     _bootstrap_session_state()
-    st.sidebar.title("EduAgent Console")
+    st.sidebar.title("EduAgent 控制台")
     client = _load_api_client()
     _configure_sidebar(client)
     st.sidebar.markdown("---")
-    page_name = st.sidebar.radio("Pages", defs.ui.TEACHER_NAV_OPTIONS)
+    page_name = st.sidebar.radio("页面", defs.ui.TEACHER_NAV_OPTIONS)
     handler = PAGE_HANDLERS.get(page_name, overview.render)
     handler(client)
 

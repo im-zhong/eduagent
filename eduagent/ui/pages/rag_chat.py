@@ -8,7 +8,7 @@ from eduagent.ui.react_stream import drain_stream_queue
 
 
 def render(client: EduAgentAPIClient) -> None:
-    st.title("LangGraph RAG Chat")
+    st.title("LangGraph RAG 对话")
     st.caption(
         "选择一个或多个已完成的笔记本，使用中文提问，实时查看助教的检索与回答过程。"
     )

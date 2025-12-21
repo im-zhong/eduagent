@@ -9,36 +9,35 @@ from eduagent.ui.react_stream import drain_stream_queue
 
 
 def render(client: EduAgentAPIClient) -> None:
-    st.title("ReAct Agent Workflow (LangGraph)")
+    st.title("ReAct 代理工作流（LangGraph）")
     st.caption(
-        "Pick a completed ingestion job, enter a Chinese instruction, and watch the agent's reasoning,"
-        " tool usage, todo list, and references streamed via SSE."
+        "选择一个已完成的摄取任务，输入中文指令，实时查看代理的推理、工具使用、待办和参考资料。"
     )
     common.ensure_reference_style()
     stream_state = common.get_agent_stream_state()
     drain_stream_queue(stream_state)
     control_cols = st.columns([3, 1])
     with control_cols[1]:
-        refresh_clicked = st.button("Refresh notebooks", key="agent_refresh")
+        refresh_clicked = st.button("刷新笔记本", key="agent_refresh")
     catalog_items = common.load_ingestion_catalog(client, refresh=refresh_clicked)
     selected_job = common.render_ingestion_selector(catalog_items)
 
     prompt = st.text_area(
-        "Agent instruction (write in Chinese)",
+        "代理指令（中文）",
         key="agent_prompt",
         height=180,
         placeholder=(
-            "Example: Generate five multiple-choice questions covering the key knowledge from this notebook."
+            "示例：生成 5 道涵盖该笔记本核心知识的选择题。"
         ),
     )
     st.markdown("---")
     if st.button(
-        "Start ReAct agent",
+        "启动 ReAct 代理",
         type="primary",
         disabled=not (selected_job and prompt.strip()),
     ):
         if selected_job is None:
-            st.error("Please pick a notebook first.")
+            st.error("请先选择一个笔记本。")
         else:
             common.start_agent_stream(client, selected_job, prompt.strip())
             rerun = getattr(st, "experimental_rerun", None)

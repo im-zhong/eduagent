@@ -6,25 +6,24 @@ from eduagent.ui.api_client import EduAgentAPIClient
 
 
 def render(client: EduAgentAPIClient) -> None:
-    st.title("EduAgent Operations Console")
+    st.title("EduAgent 运维控制台")
     st.write(
-        "Manage ingestion jobs, run the LangGraph workflow, and coordinate quiz "
-        "generation/evaluation using the secured API."
+        "管理摄取任务、运行 LangGraph 流水线，并通过安全 API 协调出题与评估。"
     )
-    if st.button("Check API Health"):
-        with st.spinner("Contacting API..."):
+    if st.button("检查 API 健康状态"):
+        with st.spinner("正在联系 API..."):
             result = client.health_check()
             if "error" in result:
                 st.error(result["error"])
             else:
-                st.success("API is healthy")
+                st.success("API 正常")
                 st.json(result)
 
-    st.subheader("Workflow")
+    st.subheader("工作流程")
     st.markdown(
-        "1. Upload document via **Ingestion Lab**\n"
-        "2. Optionally run **Workflow Runner** for synchronous results\n"
-        "3. Use **Async Pipeline** to orchestrate Celery jobs\n"
-        "4. Validate quality in **Scoring Studio**\n"
-        "5. Monitor overall metrics through **Analytics Monitor**"
+        "1. 在 **数据摄取** 上传教材或文档\n"
+        "2. 可选使用 **工作流运行** 查看同步结果\n"
+        "3. 在 **异步流水线** 编排 Celery 任务\n"
+        "4. 在 **评分工作台** 验证题目质量\n"
+        "5. 通过 **数据监控** 观察整体指标"
     )

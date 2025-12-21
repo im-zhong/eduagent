@@ -32,7 +32,7 @@ def json_text_area(label: str, key: str) -> list[dict[str, Any]]:
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        st.error(f"JSON parse error: {exc}")
+        st.error(f"JSON 解析错误: {exc}")
         return []
     if isinstance(data, list):
         filtered: list[dict[str, Any]] = [
@@ -41,14 +41,14 @@ def json_text_area(label: str, key: str) -> list[dict[str, Any]]:
             if isinstance(item, dict)
         ]
         if not filtered:
-            st.warning("JSON list does not contain any objects.")
+            st.warning("JSON 列表不包含对象。")
         return filtered
-    st.warning("Expecting a JSON list. Ignoring input.")
+    st.warning("需要 JSON 列表，已忽略输入。")
     return []
 
 
 def format_ingestion_label(job_id: str, detail: dict[str, Any]) -> str:
-    subject = detail.get("subject") or "unknown"
+    subject = detail.get("subject") or "未知学科"
     grade = detail.get("grade_level") or "-"
     return f"{job_id} | {subject} | {grade}"
 
@@ -97,14 +97,14 @@ def ensure_reference_style() -> None:
 
 def reference_icons_html(references: list[dict[str, Any]]) -> str:
     if not references:
-        return "<span style='color:#6b7280;'>No references yet</span>"
+        return "<span style='color:#6b7280;'>暂无参考资料</span>"
     icons: list[str] = []
     for idx, ref in enumerate(references, start=1):
         raw_text = str(ref.get("text") or "").strip()
         snippet = raw_text[:REFERENCE_PREVIEW_LIMIT]
         if len(raw_text) > REFERENCE_PREVIEW_LIMIT:
             snippet += "..."
-        tooltip = html.escape(snippet.replace("\n", " ").strip() or "empty", quote=True)
+        tooltip = html.escape(snippet.replace("\n", " ").strip() or "空白", quote=True)
         chunk_label = ref.get("metadata", {}).get("chunk_index")
         label = html.escape(str(chunk_label if chunk_label is not None else idx))
         icons.append(
@@ -123,7 +123,7 @@ def load_ingestion_catalog(
     else:
         cache = {"items": []}
     if refresh or not cache["items"]:
-        with st.spinner("Fetching completed ingestion notebooks..."):
+        with st.spinner("正在获取已完成的笔记本..."):
             response = client.list_ingestion_jobs()
         if "error" in response:
             st.error(response["error"])
@@ -168,21 +168,21 @@ def filter_ingestion_items(
 def render_ingestion_selector(items: list[dict[str, Any]]) -> str | None:
     if not items:
         st.info(
-            "No completed ingestion jobs available. Upload a notebook in Ingestion Lab first."
+            "暂无已完成的摄取任务，请先在“数据摄取”上传笔记本。"
         )
         return None
     filter_value = st.text_input(
-        "Filter notebooks (subject, grade, filename)",
+        "筛选笔记本（学科、年级、文件名）",
         key="agent_ingestion_filter",
     )
     filtered = filter_ingestion_items(items, filter_value)
     if not filtered:
-        st.warning("No notebooks match the current filter.")
+        st.warning("没有符合筛选条件的笔记本。")
         return None
     job_map = {cast(str, item.get("job_id")): item for item in filtered}
     options = list(job_map.keys())
     selected_job = st.selectbox(
-        "Available ingestion notebooks",
+        "可用笔记本",
         options=options,
         format_func=lambda job: format_ingestion_label(job, job_map[job]),
         key="agent_selected_ingestion",
@@ -190,7 +190,7 @@ def render_ingestion_selector(items: list[dict[str, Any]]) -> str | None:
     selection = job_map.get(selected_job)
     if selection:
         st.caption(
-            f"Source: {selection.get('source_filename') or 'unknown'} | Document job: {selection.get('document_job_id') or 'n/a'}"
+            f"来源: {selection.get('source_filename') or '未知'} | 文档任务: {selection.get('document_job_id') or 'n/a'}"
         )
     return selected_job
 
@@ -274,7 +274,7 @@ def start_rag_chat_stream(
 
 
 def render_agent_stream(state: AgentStreamState) -> None:
-    st.subheader("Live execution stream")
+    st.subheader("实时执行流")
     status_placeholder = st.empty()
     state_cols = st.columns(3)
     plan_and_references = st.columns((1.3, 1.3, 1))
@@ -321,9 +321,9 @@ def _schedule_agent_autorefresh() -> None:
 
 def _render_idle_stream(status: str, placeholder: DeltaGenerator) -> None:
     if status == "running":
-        placeholder.info("Agent is booting...")
+        placeholder.info("代理正在启动...")
     else:
-        placeholder.info("Agent idle. Submit a prompt to start streaming.")
+        placeholder.info("代理空闲，提交指令以开始流式执行。")
 
 
 def _render_status_section(
@@ -335,13 +335,13 @@ def _render_status_section(
 ) -> None:
     status_placeholder = placeholders["status"]
     if status == "error":
-        status_placeholder.error(payload.get("message", "Agent execution failed"))
+        status_placeholder.error(payload.get("message", "代理执行失败"))
     elif status == "completed":
-        status_placeholder.success("Agent finished. Final quiz payload is shown below.")
+        status_placeholder.success("代理已完成，最终测验载荷如下。")
         final_payload = final_result or payload
         placeholders["final"].json(final_payload)
     else:
-        status_placeholder.info(f"Phase: {phase}")
+        status_placeholder.info(f"阶段：{phase}")
 
 
 def _render_agent_details(
@@ -349,13 +349,13 @@ def _render_agent_details(
     placeholders: AgentPlaceholderMap,
 ) -> None:
     placeholders["thought"].markdown(
-        f"**Thought**: {payload.get('thought') or '[none]'}"
+        f"**思考**: {payload.get('thought') or '[暂无]'}"
     )
     placeholders["action"].markdown(
-        f"**Action**: {payload.get('action') or '[pending]'}"
+        f"**动作**: {payload.get('action') or '[待执行]'}"
     )
     placeholders["observation"].markdown(
-        f"**Observation**: {payload.get('observation') or '[none yet]'}"
+        f"**观察**: {payload.get('observation') or '[尚无]'}"
     )
     todo_items = [
         str(item)
@@ -364,9 +364,9 @@ def _render_agent_details(
     ]
     if todo_items:
         todo_markdown = "\n".join(f"- {item}" for item in todo_items)
-        placeholders["todo"].markdown(f"**Todo list**\n{todo_markdown}")
+        placeholders["todo"].markdown(f"**待办列表**\n{todo_markdown}")
     else:
-        placeholders["todo"].markdown("**Todo list**\n_none_")
+        placeholders["todo"].markdown("**待办列表**\n_暂无_")
     references = cast(list[dict[str, Any]], payload.get("references") or [])
     placeholders["references"].markdown(
         reference_icons_html(references), unsafe_allow_html=True
@@ -374,9 +374,9 @@ def _render_agent_details(
     tool_usage = cast(dict[str, Any], payload.get("tool_usage") or {})
     if tool_usage:
         usage_text = " / ".join(f"{key}:{value}" for key, value in tool_usage.items())
-        placeholders["tools"].markdown(f"**Tool usage**: {usage_text}")
+        placeholders["tools"].markdown(f"**工具使用**: {usage_text}")
     else:
-        placeholders["tools"].markdown("**Tool usage**: none")
+        placeholders["tools"].markdown("**工具使用**: 无")
 
 
 def _render_agent_log(
@@ -395,12 +395,12 @@ def _render_agent_log(
 
     log_lines = [_log_entry(evt) for evt in events[-8:]]
     log_placeholder.markdown(
-        "**Event log**\n" + "\n".join(f"- {line}" for line in log_lines)
+        "**事件日志**\n" + "\n".join(f"- {line}" for line in log_lines)
     )
 
 
 def render_rag_stream(state: AgentStreamState) -> None:
-    st.subheader("Agent 状态")
+    st.subheader("代理状态")
     placeholders: AgentPlaceholderMap = {
         "status": st.empty(),
         "todo": st.empty(),
@@ -419,9 +419,9 @@ def render_rag_stream(state: AgentStreamState) -> None:
     phase = str(latest.get("phase") or "")
     payload = cast(dict[str, Any], latest.get("payload") or {})
     if status == "error":
-        placeholders["status"].error(payload.get("message") or "RAG agent error")
+        placeholders["status"].error(payload.get("message") or "RAG 代理错误")
     elif status == "completed":
-        placeholders["status"].success("Agent 完成回答")
+        placeholders["status"].success("代理完成回答")
     else:
         placeholders["status"].info(f"阶段：{phase}")
     todo_items = [
