@@ -11,7 +11,7 @@ from eduagent.ui.api_client import EduAgentAPIClient
 def render(client: EduAgentAPIClient) -> None:
     st.title("异步测验流水线")
     st.subheader("生成任务")
-    ingestion_job = st.text_input("摄取任务 ID", key="async_ingestion")
+    ingestion_job = st.text_input("解析任务 ID", key="async_ingestion")
     col1, col2 = st.columns(2)
     subject = col1.text_input("学科覆盖", "")
     query = col2.text_input("额外上下文/说明", "")

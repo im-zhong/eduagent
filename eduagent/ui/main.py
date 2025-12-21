@@ -83,7 +83,7 @@ def _configure_sidebar(client: EduAgentAPIClient) -> None:
 
 PAGE_HANDLERS = {
     "总览": overview.render,
-    "数据摄取": ingestion_lab.render,
+    "数据解析": ingestion_lab.render,
     "工作流运行": workflow_runner.render,
     "ReAct 代理": agent_workflow.render,
     "RAG 对话": rag_chat.render,

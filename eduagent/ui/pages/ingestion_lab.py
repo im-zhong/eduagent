@@ -8,7 +8,7 @@ from eduagent.ui.api_client import EduAgentAPIClient
 
 
 def render(client: EduAgentAPIClient) -> None:
-    st.title("数据摄取")
+    st.title("数据解析")
     st.subheader("上传教材或 DOCX")
     file = st.file_uploader("选择文件", type=["docx", "pdf"])
     grade_labels = {
@@ -22,12 +22,10 @@ def render(client: EduAgentAPIClient) -> None:
         defs.ui.GRADE_LEVELS,
         format_func=lambda value: grade_labels.get(value, value),
     )
-    st.caption(
-        "学科标签由摄取流水线自动推断，初始存储为“general”。"
-    )
+    st.caption("学科标签由解析流水线自动推断，初始存储为“general”。")
     subject_value = SubjectArea.GENERAL.value
-    if st.button("开始摄取") and file is not None:
-        with st.spinner("正在上传至摄取流水线..."):
+    if st.button("开始解析") and file is not None:
+        with st.spinner("正在上传至解析流水线..."):
             result = client.upload_ingestion_document(
                 file.name, file.getvalue(), subject_value, grade
             )

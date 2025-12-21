@@ -66,7 +66,7 @@ class UIDefs:
     # Navigation options
     TEACHER_NAV_OPTIONS: ClassVar[list[str]] = [
         "总览",
-        "数据摄取",
+        "数据解析",
         "工作流运行",
         "ReAct 代理",
         "RAG 对话",

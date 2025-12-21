@@ -11,7 +11,7 @@ from eduagent.ui.react_stream import drain_stream_queue
 def render(client: EduAgentAPIClient) -> None:
     st.title("ReAct 代理工作流（LangGraph）")
     st.caption(
-        "选择一个已完成的摄取任务，输入中文指令，实时查看代理的推理、工具使用、待办和参考资料。"
+        "选择一个已完成的解析任务，输入中文指令，实时查看代理的推理、工具使用、待办和参考资料。"
     )
     common.ensure_reference_style()
     stream_state = common.get_agent_stream_state()
@@ -26,9 +26,7 @@ def render(client: EduAgentAPIClient) -> None:
         "代理指令（中文）",
         key="agent_prompt",
         height=180,
-        placeholder=(
-            "示例：生成 5 道涵盖该笔记本核心知识的选择题。"
-        ),
+        placeholder=("示例：生成 5 道涵盖该笔记本核心知识的选择题。"),
     )
     st.markdown("---")
     if st.button(

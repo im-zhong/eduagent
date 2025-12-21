@@ -167,9 +167,7 @@ def filter_ingestion_items(
 
 def render_ingestion_selector(items: list[dict[str, Any]]) -> str | None:
     if not items:
-        st.info(
-            "暂无已完成的摄取任务，请先在“数据摄取”上传笔记本。"
-        )
+        st.info("暂无已完成的解析任务，请先在“数据解析”上传笔记本。")
         return None
     filter_value = st.text_input(
         "筛选笔记本（学科、年级、文件名）",
@@ -348,12 +346,8 @@ def _render_agent_details(
     payload: dict[str, Any],
     placeholders: AgentPlaceholderMap,
 ) -> None:
-    placeholders["thought"].markdown(
-        f"**思考**: {payload.get('thought') or '[暂无]'}"
-    )
-    placeholders["action"].markdown(
-        f"**动作**: {payload.get('action') or '[待执行]'}"
-    )
+    placeholders["thought"].markdown(f"**思考**: {payload.get('thought') or '[暂无]'}")
+    placeholders["action"].markdown(f"**动作**: {payload.get('action') or '[待执行]'}")
     placeholders["observation"].markdown(
         f"**观察**: {payload.get('observation') or '[尚无]'}"
     )
