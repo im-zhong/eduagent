@@ -21,6 +21,7 @@ from eduagent.ui.pages import (
     rag_chat,
     scoring_studio,
     workflow_runner,
+    agent_chat,
 )
 
 DEFAULT_API_URL = "http://api.eduagent:8000"
@@ -85,6 +86,7 @@ PAGE_HANDLERS = {
     "总览": overview.render,
     "数据解析": ingestion_lab.render,
     "工作流运行": workflow_runner.render,
+    "Agent 对话": agent_chat.render,
     "ReAct 代理": agent_workflow.render,
     "RAG 对话": rag_chat.render,
     "异步流水线": async_pipeline.render,
