@@ -7,6 +7,7 @@ import streamlit as st
 
 from eduagent.api.endpoints.chat import AgentMessage
 from eduagent.ui.api_client import EduAgentAPIClient
+from eduagent.ui import common
 
 
 def _load_user_id() -> str:
@@ -70,6 +71,27 @@ def render(client: EduAgentAPIClient | None = None) -> None:
         data = resp.json()
         return data["thread_id"]
 
+    selected_kb: str | None = None
+    if client:
+        refresh_kb = st.button("刷新知识库列表", key="agent_chat_kb_refresh")
+        catalog_items = common.load_ingestion_catalog(client, refresh=refresh_kb)
+        if catalog_items:
+            job_map = {str(item["job_id"]): item for item in catalog_items}
+            options = list(job_map.keys())
+            selected_kb = st.selectbox(
+                "选择知识库",
+                options=options,
+                format_func=lambda job: common.format_ingestion_label(
+                    job, job_map[job]
+                ),
+                key="agent_chat_kb",
+            )
+            st.session_state["agent_chat_selected_kb"] = selected_kb
+        else:
+            st.info("暂无已完成的知识库，请先上传并完成摄取。")
+    else:
+        st.info("未检测到 API 客户端，无法加载知识库列表。")
+
     st.sidebar.header("历史对话")
     try:
         thread_ids = fetch_threads()
@@ -103,6 +125,10 @@ def render(client: EduAgentAPIClient | None = None) -> None:
         st.session_state.messages = [
             {"role": "assistant", "content": "Let's start chatting! 👇"}
         ]
+
+    for message in _ordered_messages(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
     with st.form("agent_chat_form"):
         prompt = st.text_area("请输入问题", key="agent_chat_prompt", height=100)
@@ -141,7 +167,3 @@ def render(client: EduAgentAPIClient | None = None) -> None:
         st.session_state.messages.append(
             {"role": "assistant", "content": full_response}
         )
-
-    for message in _ordered_messages(st.session_state.messages):
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])

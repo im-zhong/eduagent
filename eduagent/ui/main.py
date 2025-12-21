@@ -97,12 +97,12 @@ PAGE_HANDLERS = {
 
 def main() -> None:
     st.set_page_config(
-        page_title="EduAgent 运维控制台",
+        page_title="出题智能体 Demo",
         page_icon=defs.ui.PAGE_ICON,
         layout="wide",
     )
     _bootstrap_session_state()
-    st.sidebar.title("EduAgent 控制台")
+    st.sidebar.title("出题智能体 Demo")
     client = _load_api_client()
     _configure_sidebar(client)
     st.sidebar.markdown("---")

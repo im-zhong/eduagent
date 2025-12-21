@@ -67,13 +67,13 @@ class UIDefs:
     TEACHER_NAV_OPTIONS: ClassVar[list[str]] = [
         "总览",
         "数据解析",
-        "工作流运行",
+        # "工作流运行",
         "Agent 对话",
-        "ReAct 代理",
-        "RAG 对话",
-        "异步流水线",
-        "评分工作台",
-        "数据监控",
+        # "ReAct 代理",
+        # "RAG 对话",
+        # "异步流水线",
+        # "评分工作台",
+        # "数据监控",
     ]
 
     STUDENT_NAV_OPTIONS: ClassVar[list[str]] = []

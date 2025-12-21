@@ -48,9 +48,10 @@ def json_text_area(label: str, key: str) -> list[dict[str, Any]]:
 
 
 def format_ingestion_label(job_id: str, detail: dict[str, Any]) -> str:
+    filename = detail.get("source_filename") or "未知文件"
     subject = detail.get("subject") or "未知学科"
     grade = detail.get("grade_level") or "-"
-    return f"{job_id} | {subject} | {grade}"
+    return f"{filename} | {subject} | {grade}"
 
 
 def ensure_reference_style() -> None:

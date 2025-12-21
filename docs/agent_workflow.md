@@ -55,3 +55,25 @@ sequenceDiagram
     Celery-->>Teacher: (via later status check) job marked completed with document_job_id
 
 ```
+
+## Quiz Generation Workflow
+
+```mermaid
+flowchart TD
+    Q[User Query]
+    RQ[Rewrite Query - 规范化和消歧]
+    SE[结构化提取: 题目要求 / 难度 / 知识点 / 数量 / 题型]
+    ASK[补充提问: 无法提取则让用户细化需求]
+    RET[检索: 用改写后的 Query + 结构化约束搜索知识库]
+    GEN[生成题目: 结合检索结果与约束]
+    EVAL[大模型评估: 是否满足原始需求]
+    DONE[输出最终题目]
+    REGEN[重新生成: 调整提示或约束后再生成]
+
+    Q --> RQ --> SE
+    SE -->|信息不足| ASK --> SE
+    SE -->|信息充分| RET --> GEN --> EVAL
+    EVAL -->|满足| DONE
+    EVAL -->|不满足| REGEN --> GEN
+
+```
