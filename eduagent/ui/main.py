@@ -104,9 +104,12 @@ def main() -> None:
     client = _load_api_client()
     _configure_sidebar(client)
     st.sidebar.markdown("---")
-    page_name = st.sidebar.radio("页面", defs.ui.TEACHER_NAV_OPTIONS)
-    handler = PAGE_HANDLERS.get(page_name, overview.render)
-    handler(client)
+
+    tabs = st.tabs(defs.ui.TEACHER_NAV_OPTIONS)
+    for tab, page_name in zip(tabs, defs.ui.TEACHER_NAV_OPTIONS):
+        handler = PAGE_HANDLERS.get(page_name, overview.render)
+        with tab:
+            handler(client)
 
 
 if __name__ == "__main__":
