@@ -416,12 +416,14 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiosqlite" },
+    { name = "anyio" },
     { name = "asyncpg" },
     { name = "celery" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "langchain" },
     { name = "langchain-community" },
+    { name = "langchain-deepseek" },
     { name = "langchain-openai" },
     { name = "langchain-postgres" },
     { name = "langgraph" },
@@ -459,12 +461,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
+    { name = "anyio", specifier = ">=4.11.0" },
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "celery", specifier = ">=5.6.0" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", specifier = ">=0.3.27" },
     { name = "langchain-community", specifier = ">=0.2.19" },
+    { name = "langchain-deepseek", specifier = ">=0.1.4" },
     { name = "langchain-openai", specifier = ">=0.3.35" },
     { name = "langchain-postgres" },
     { name = "langgraph" },
@@ -879,6 +883,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c8/99/f926495f467e0f43289f12e951655d267d1eddc1136c3cf4dd907794a9a7/langchain_core-0.3.79.tar.gz", hash = "sha256:024ba54a346dd9b13fb8b2342e0c83d0111e7f26fa01f545ada23ad772b55a60", size = 580895, upload-time = "2025-10-09T21:59:08.359Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fc/71/46b0efaf3fc6ad2c2bd600aef500f1cb2b7038a4042f58905805630dd29d/langchain_core-0.3.79-py3-none-any.whl", hash = "sha256:92045bfda3e741f8018e1356f83be203ec601561c6a7becfefe85be5ddc58fdb", size = 449779, upload-time = "2025-10-09T21:59:06.493Z" },
+]
+
+[[package]]
+name = "langchain-deepseek"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-core" },
+    { name = "langchain-openai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8a/64/15fe061165574b3ba80011d96cb3f428f9e6f5631cd76058b028333023db/langchain_deepseek-0.1.4.tar.gz", hash = "sha256:dc105138aee4fce03badd0521e69d5508b37f5c087d92b3e8481ffb8f9563d33", size = 8937, upload-time = "2025-07-22T17:37:42.798Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/39/d3/0da6f3f5548e1a771d0500e17da723996f8ba1398bcef7198a2ecbca6e1b/langchain_deepseek-0.1.4-py3-none-any.whl", hash = "sha256:9ce3dbfc7a40f221657ffe31e8623ea6e397f6c90de2a58d38204ac63e8f41ff", size = 7440, upload-time = "2025-07-22T17:37:41.618Z" },
 ]
 
 [[package]]

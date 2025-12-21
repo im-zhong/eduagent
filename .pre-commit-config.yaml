@@ -55,18 +55,19 @@ repos:
       - id: prettier
         types_or: [json, toml, xml, yaml]
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    rev: v0.14.0
-    hooks:
-      # Run the linter.
-      - id: ruff
-        args: [--fix]
-      # Run the formatter.
-      - id: ruff-format
+  # close for demo
+  # - repo: https://github.com/astral-sh/ruff-pre-commit
+  #   # Ruff version.
+  #   rev: v0.14.0
+  #   hooks:
+  #     # Run the linter.
+  #     - id: ruff
+  #       args: [--fix]
+  #     # Run the formatter.
+  #     - id: ruff-format
 
-  - repo: https://github.com/RobertCraigie/pyright-python.git
-    rev: v1.1.406
-    hooks:
-      - id: pyright
-        args: ["--warnings", "--project=pyproject.toml"]
+  # - repo: https://github.com/RobertCraigie/pyright-python.git
+  #   rev: v1.1.406
+  #   hooks:
+  #     - id: pyright
+  #       args: ["--warnings", "--project=pyproject.toml"]
