@@ -1,5 +1,6 @@
 {
   "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["-s"],
   "python.testing.unittestEnabled": false,
   "python.envFile": "${workspaceFolder}/.env",
   "python.terminal.useEnvFile": true

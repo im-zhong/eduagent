@@ -21,6 +21,9 @@ from eduagent.storage.milvus_store import milvus_store
 logger = get_logger(__name__, component="agents.rag")
 
 
+## 这个生成的agent先不删了，不过写一个简单的能跑起来的agent先
+
+
 class ConversationTurn(TypedDict):
     role: Literal["user", "assistant"]
     content: str
