@@ -10,6 +10,9 @@ from eduagent.api.security import require_service_token
 from eduagent.logger import get_logger
 from eduagent.storage.engine import async_engine
 from eduagent.user.models import Base
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from eduagent.agents.chat import get_agent, ensure_user_threads_table
+from eduagent.llm import get_chat_model
 
 # --------------------
 from .endpoints import api_routers
@@ -18,18 +21,65 @@ api_logger = get_logger(__name__, component="api.core")
 
 
 # 2. 保留你的 lifespan 函数，用于应用启动时创建数据库表
+# @asynccontextmanager
+# async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+#     """
+#     在应用启动时, 创建数据库表
+#     """
+#     api_logger.info("Initializing API database schema")
+#     async with async_engine.begin() as conn:
+#         await conn.run_sync(Base.metadata.create_all)
+#     api_logger.info("API startup complete")
+#     yield
+#     # 应用关闭时的清理工作（如果需要）
+#     api_logger.info("API shutdown sequence completed")
+
+
+# # perfect for
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     # create async pg saver
+#     async with AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer:
+#         await checkpointer.setup()
+#         await ensure_user_threads_table(checkpointer.conn)
+
+#         # 需要在这里创建agent graph和checkpointer
+#         # 不同用户的agent用config来区分
+#         agent = get_agent(model=llm, checkpointer=checkpointer)
+#         app.state.agent = agent
+#         # get the async pgsql connector
+#         app.state.conn = checkpointer.conn
+#         yield
+
+# 看起来我们必须先启动一个pg了
+# 看起来async pg saver的内部实现并没有使用sqlalchemy，直接用的psycopg
+DB_URI = "postgresql://ysu_keg:123456789@db.eduagent:5432/eduagent?sslmode=disable"
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    """
-    在应用启动时, 创建数据库表
-    """
-    api_logger.info("Initializing API database schema")
-    async with async_engine.begin() as conn:
+async def lifespan(app: FastAPI):
+    async with (
+        async_engine.begin() as conn,
+        AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer,
+    ):
+        # DB schema init
         await conn.run_sync(Base.metadata.create_all)
-    api_logger.info("API startup complete")
-    yield
-    # 应用关闭时的清理工作（如果需要）
-    api_logger.info("API shutdown sequence completed")
+
+        # Checkpointer setup
+        await checkpointer.setup()
+        await ensure_user_threads_table(checkpointer.conn)
+
+        # create llm
+        llm = get_chat_model()
+
+        # Agent init
+        agent = get_agent(model=llm, checkpointer=checkpointer)
+        app.state.agent = agent
+        app.state.conn = checkpointer.conn
+
+        yield
+
+    # teardown happens automatically in reverse order
 
 
 # Create FastAPI application

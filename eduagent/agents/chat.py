@@ -42,9 +42,6 @@ class MessagesState(TypedDict):
     llm_calls: int
 
 
-# 看起来我们必须先启动一个pg了
-# 看起来async pg saver的内部实现并没有使用sqlalchemy，直接用的psycopg
-DB_URI = "postgresql://postgres:postgres@localhost:5442/postgres?sslmode=disable"
 
 
 def get_agent(
