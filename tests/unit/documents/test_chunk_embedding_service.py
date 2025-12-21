@@ -7,6 +7,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from eduagent.documents import services
 from eduagent.documents.repository import DocumentRepository
 from eduagent.documents.services import ChunkEmbeddingService, EmbeddingBackend
 from eduagent.storage.milvus_store import EmbeddingRecord
@@ -129,3 +130,22 @@ async def test_chunk_embedding_service_validates_vector_count(
     )
     with pytest.raises(ValueError, match="Embedding backend returned mismatched"):
         await service.index_job_chunks(job.id)
+
+
+def test_embedding_backend_batches_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    class StubModel:
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            calls.append(list(texts))
+            return [[float(len(calls))]] * len(texts)
+
+    monkeypatch.setattr(services, "get_embedding_model", lambda: StubModel())
+    backend = EmbeddingBackend()
+    texts = [f"chunk-{idx}" for idx in range(70)]
+    vectors = backend.embed_documents(texts)
+    assert len(vectors) == len(texts)
+    expected_batches = 2
+    assert len(calls) == expected_batches  # 64 + 6
+    assert calls[0] == texts[:64]
+    assert calls[1] == texts[64:]

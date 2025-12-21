@@ -127,9 +127,19 @@ class DocxIngestionService:
 class EmbeddingBackend:
     """Lightweight wrapper to make embedding dependencies swappable."""
 
+    BATCH_LIMIT = 64
+
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
         model = get_embedding_model()
-        return model.embed_documents(texts)
+        results: list[list[float]] = []
+        batch_limit = max(1, self.BATCH_LIMIT)
+        for start in range(0, len(texts), batch_limit):
+            batch = texts[start : start + batch_limit]
+            batch_vectors = model.embed_documents(batch)
+            results.extend(batch_vectors)
+        return results
 
     def embed_query(self, text: str) -> list[float]:
         model = get_embedding_model()
