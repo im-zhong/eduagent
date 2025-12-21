@@ -43,9 +43,39 @@ class _IngestionCache(TypedDict):
 DEFAULT_API_URL = "http://api.eduagent:8000"
 
 
+def _load_service_jwt_from_config() -> str | None:
+    """Return service JWT from Streamlit secrets/config if present."""
+    secrets = getattr(st, "secrets", None)
+    if not secrets:
+        return None
+    token = secrets.get("service_jwt")
+    if isinstance(token, str) and token.strip():
+        return token.strip()
+    return None
+
+
+def _bootstrap_session_state() -> None:
+    """Initialize session defaults from config."""
+    if not isinstance(st.session_state.get("service_jwt"), str):
+        token = _load_service_jwt_from_config()
+        if token:
+            st.session_state.service_jwt = token
+    api_url = st.session_state.get("api_base_url")
+    if not isinstance(api_url, str) or not api_url.strip():
+        st.session_state.api_base_url = DEFAULT_API_URL
+
+
 def _load_api_client() -> EduAgentAPIClient:
-    if "api_client" not in st.session_state:
-        st.session_state.api_client = EduAgentAPIClient(DEFAULT_API_URL)
+    base_url = st.session_state.get("api_base_url")
+    if not isinstance(base_url, str) or not base_url.strip():
+        base_url = DEFAULT_API_URL
+        st.session_state.api_base_url = base_url
+    token = cast(str | None, st.session_state.get("service_jwt"))
+    client = st.session_state.get("api_client")
+    if isinstance(client, EduAgentAPIClient):
+        client.configure(base_url, token)
+        return client
+    st.session_state.api_client = EduAgentAPIClient(base_url, token)
     return st.session_state.api_client
 
 
@@ -56,16 +86,14 @@ def _configure_sidebar(client: EduAgentAPIClient) -> None:
         "Service Base URL",
         value=stored_url,
     )
-    token = st.sidebar.text_area(
-        "Service JWT",
-        value=st.session_state.get("service_jwt", ""),
-        height=140,
-        help="Paste the signed service token from Next.js.",
-    )
+    token = cast(str | None, st.session_state.get("service_jwt"))
+    if token:
+        st.sidebar.caption("Service JWT loaded from Streamlit config.")
+    else:
+        st.sidebar.warning("No service JWT found in Streamlit config.")
     if st.sidebar.button("Apply Settings"):
         effective_base = base_url or DEFAULT_API_URL
         st.session_state.api_base_url = effective_base
-        st.session_state.service_jwt = token
         client.configure(effective_base, token or None)
         st.sidebar.success("Configuration updated.")
 
@@ -786,6 +814,7 @@ def main() -> None:
         page_icon=defs.ui.PAGE_ICON,
         layout="wide",
     )
+    _bootstrap_session_state()
     st.sidebar.title("EduAgent Console")
     client = _load_api_client()
     _configure_sidebar(client)
