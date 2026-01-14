@@ -3,7 +3,6 @@
 
 
 from pathlib import Path
-from typing import ClassVar
 
 
 class Pathes:

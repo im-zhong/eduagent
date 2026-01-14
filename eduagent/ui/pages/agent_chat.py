@@ -7,7 +7,7 @@ import streamlit as st
 
 from eduagent.api.endpoints.chat import AgentMessage
 from eduagent.ui.api_client import EduAgentAPIClient
-from eduagent.ui import common
+# from eduagent.ui import common
 
 
 def _load_user_id() -> str:
