@@ -1,16 +1,16 @@
-import uuid
-from datetime import UTC, datetime
+# import uuid
+# from datetime import UTC, datetime
 
-from fastapi import APIRouter
+# from fastapi import APIRouter
 
-from eduagent.api.schemas import (
-    KnowledgeExtractionResponse,
-    KnowledgeGraphResponse,
-)
-from eduagent.logger import get_logger
+# from eduagent.api.schemas import (
+#     KnowledgeExtractionResponse,
+#     KnowledgeGraphResponse,
+# )
+# from eduagent.logger import get_logger
 
-router = APIRouter()
-api_logger = get_logger(__name__, component="api.knowledge")
+# router = APIRouter()
+# api_logger = get_logger(__name__, component="api.knowledge")
 
 
 # @router.post("/textbook/upload")

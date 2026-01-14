@@ -72,25 +72,25 @@ def render(client: EduAgentAPIClient | None = None) -> None:
         return data["thread_id"]
 
     selected_kb: str | None = None
-    if client:
-        refresh_kb = st.button("刷新知识库列表", key="agent_chat_kb_refresh")
-        catalog_items = common.load_ingestion_catalog(client, refresh=refresh_kb)
-        if catalog_items:
-            job_map = {str(item["job_id"]): item for item in catalog_items}
-            options = list(job_map.keys())
-            selected_kb = st.selectbox(
-                "选择知识库",
-                options=options,
-                format_func=lambda job: common.format_ingestion_label(
-                    job, job_map[job]
-                ),
-                key="agent_chat_kb",
-            )
-            st.session_state["agent_chat_selected_kb"] = selected_kb
-        else:
-            st.info("暂无已完成的知识库，请先上传并完成摄取。")
-    else:
-        st.info("未检测到 API 客户端，无法加载知识库列表。")
+    # if client:
+    #     refresh_kb = st.button("刷新知识库列表", key="agent_chat_kb_refresh")
+    #     catalog_items = common.load_ingestion_catalog(client, refresh=refresh_kb)
+    #     if catalog_items:
+    #         job_map = {str(item["job_id"]): item for item in catalog_items}
+    #         options = list(job_map.keys())
+    #         selected_kb = st.selectbox(
+    #             "选择知识库",
+    #             options=options,
+    #             format_func=lambda job: common.format_ingestion_label(
+    #                 job, job_map[job]
+    #             ),
+    #             key="agent_chat_kb",
+    #         )
+    #         st.session_state["agent_chat_selected_kb"] = selected_kb
+    #     else:
+    #         st.info("暂无已完成的知识库，请先上传并完成摄取。")
+    # else:
+    #     st.info("未检测到 API 客户端，无法加载知识库列表。")
 
     st.sidebar.header("历史对话")
     try:

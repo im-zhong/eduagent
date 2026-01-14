@@ -1,16 +1,16 @@
-from fastapi import APIRouter
+# from fastapi import APIRouter
 
-from eduagent.api.schemas import (
-    AssessmentRequest,
-    AssessmentResponse,
-    AssessmentResult,
-    FeedbackRequest,
-    FeedbackResponse,
-)
-from eduagent.logger import get_logger
+# from eduagent.api.schemas import (
+#     AssessmentRequest,
+#     AssessmentResponse,
+#     AssessmentResult,
+#     FeedbackRequest,
+#     FeedbackResponse,
+# )
+# from eduagent.logger import get_logger
 
-router = APIRouter()
-api_logger = get_logger(__name__, component="api.assessment")
+# router = APIRouter()
+# api_logger = get_logger(__name__, component="api.assessment")
 
 
 # @router.post("/assessment/evaluate")

@@ -1,21 +1,21 @@
-import uuid
-from datetime import UTC, datetime
-from typing import Any
+# import uuid
+# from datetime import UTC, datetime
+# from typing import Any
 
-from fastapi import APIRouter
+# from fastapi import APIRouter
 
-from eduagent.api.schemas import (
-    CognitiveLevel,
-    DifficultyControlRequest,
-    DifficultyControlResponse,
-    GeneratedQuestion,
-    QuestionGenerationRequest,
-    QuestionGenerationResponse,
-)
-from eduagent.logger import get_logger
+# from eduagent.api.schemas import (
+#     CognitiveLevel,
+#     DifficultyControlRequest,
+#     DifficultyControlResponse,
+#     GeneratedQuestion,
+#     QuestionGenerationRequest,
+#     QuestionGenerationResponse,
+# )
+# from eduagent.logger import get_logger
 
-router = APIRouter()
-api_logger = get_logger(__name__, component="api.questions")
+# router = APIRouter()
+# api_logger = get_logger(__name__, component="api.questions")
 
 
 # @router.post("/questions/generate")
