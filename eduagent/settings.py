@@ -52,11 +52,6 @@ class DatabaseConfig(BaseModel):
         return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
     @property
-    def celery_result_backend(self) -> str:
-        """Create Celery compatible SQLAlchemy backend DSN"""
-        return f"db+postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
-
-    @property
     def db_dict(self) -> dict[str, Any]:
         """以字典形式返回数据库连接参数"""
         return {
@@ -81,18 +76,6 @@ class PGVectorSettings(BaseModel):
         return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
 
 
-class RabbitMQConfig(BaseModel):
-    host: str = "eduagent-rabbitmq"
-    port: int = 5672
-    username: str = "eduagent"
-    password: str = "eduagent"
-    vhost: str = "/"
-
-    @property
-    def amqp_url(self) -> str:
-        return f"amqp://{self.username}:{self.password}@{self.host}:{self.port}{self.vhost}"
-
-
 class MilvusConfig(BaseModel):
     """Milvus 向量数据库配置"""
 
@@ -114,16 +97,6 @@ class MinioConfig(BaseModel):
     secret_key: str = "minioadmin"
     secure: bool = False
     bucket: str = "eduagent"
-
-
-class CeleryConfig(BaseModel):
-    """Celery 分布式任务队列配置"""
-
-    broker_url: str | None = None
-    result_backend: str | None = None
-    default_queue: str = "eduagent.quizzes"
-    task_time_limit: int = 600
-    result_expires: int = 3600
 
 
 class ServiceAuthConfig(BaseModel):
@@ -156,18 +129,10 @@ class Settings(BaseModel):
     pg_vector: PGVectorSettings = Field(default_factory=PGVectorSettings)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
-    rabbitmq: RabbitMQConfig = Field(default_factory=RabbitMQConfig)
     milvus: MilvusConfig = Field(default_factory=MilvusConfig)
     minio: MinioConfig = Field(default_factory=MinioConfig)
-    celery: CeleryConfig = Field(default_factory=CeleryConfig)
     service_auth: ServiceAuthConfig = Field(default_factory=ServiceAuthConfig)
     quiz_workflow: QuizWorkflowSettings = Field(default_factory=QuizWorkflowSettings)
-
-    def model_post_init(self, __context: object, /) -> None:
-        if not self.celery.broker_url:
-            self.celery.broker_url = self.rabbitmq.amqp_url
-        if not self.celery.result_backend:
-            self.celery.result_backend = self.database.celery_result_backend
 
 
 # --- 工厂函数 ---

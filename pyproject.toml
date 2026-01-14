@@ -22,7 +22,6 @@ dependencies = [
     "uvicorn>=0.35.0",
     "zhipuai>=2.0.0",
     # "casbin>=1.43.0",
-    "celery>=5.6.0",
     "pymilvus>=2.6.5",
     "minio>=7.2.20",
     "python-docx>=1.1.0",

@@ -75,7 +75,6 @@ services:
     depends_on:
       - eduagent-db
       - eduagent-redis
-      - eduagent-rabbitmq
       # - eduagent-milvus
 
   eduagent-db:
@@ -102,21 +101,6 @@ services:
       - 6379
     networks:
       - eduagent-network
-
-  eduagent-rabbitmq:
-    image: rabbitmq:4.2-management
-    hostname: rabbitmq.eduagent
-    restart: unless-stopped
-    environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-eduagent}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-eduagent}
-    expose:
-      - 5672
-      - 15672
-    networks:
-      - eduagent-network
-    volumes:
-      - ./data/rabbitmq:/var/lib/rabbitmq
 
   etcd:
     # container_name: etcd.eduagent
@@ -214,25 +198,6 @@ services:
       retries: 3
     networks:
       - eduagent-network
-
-  eduagent-celery-worker:
-    image: eduagent:${USER}
-    command:
-      - celery
-      - -A
-      - eduagent.tasks.app.celery_app
-      - worker
-      - -l
-      - info
-    hostname: celery.eduagent
-    restart: unless-stopped
-    volumes:
-      - .:/home/${USER}/eduagent
-    networks:
-      - eduagent-network
-    depends_on:
-      - eduagent-rabbitmq
-      - eduagent-db
 
   # 容器监控 - 收集 Docker 容器指标
   # cadvisor:

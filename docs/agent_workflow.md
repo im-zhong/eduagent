@@ -12,7 +12,7 @@ flowchart TD
     G --> H[ReAct Agent (plan → act → evaluate → finalize)]
     H --> I[QuizArtifact persisted]
 
-    I --> J[Quiz Generation Celery Task]
+    I --> J[Quiz Generation Task]
     J --> K[Quiz Evaluation Task]
     J --> L[Quiz Scoring Task]
     K --> M[Evaluation Result stored]
@@ -34,7 +34,6 @@ sequenceDiagram
     participant FastAPI as FastAPI /quiz/upload
     participant MinIO as MinIO Storage
     participant Repo as QuizJobRepository
-    participant Celery as Celery Worker
     participant DocsSvc as Document Service
     participant Milvus as Milvus Vector Store
 
@@ -45,14 +44,12 @@ sequenceDiagram
     FastAPI->>Repo: create_ingestion_job(subject, grade, payload)
     Repo-->>FastAPI: job record (status=pending)
     FastAPI-->>Teacher: 202 Accepted + ingestion job_id
-    FastAPI->>Celery: enqueue process_textbook_upload(job_id, object_id, metadata)
-
-    Celery->>DocsSvc: download & parse DOCX/PDF
+    FastAPI->>DocsSvc: download & parse DOCX/PDF
     DocsSvc->>Milvus: embed chunks + store vectors
-    DocsSvc-->>Celery: ingestion artifact ids
-    Celery->>Repo: update_status(job_id, completed, result=document_job_id)
-    Repo-->>Celery: updated job record
-    Celery-->>Teacher: (via later status check) job marked completed with document_job_id
+    DocsSvc-->>FastAPI: ingestion artifact ids
+    FastAPI->>Repo: update_status(job_id, completed, result=document_job_id)
+    Repo-->>FastAPI: updated job record
+    FastAPI-->>Teacher: (via later status check) job marked completed with document_job_id
 
 ```
 
