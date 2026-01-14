@@ -48,6 +48,8 @@ async def parse_document(path: Path) -> ParsedDocument:
         raise DocumentNotFoundError(f"Document file not found: {path}")
 
     try:
+        # pypandoc invokes the pandoc binary, so the heavy work runs outside the GIL.
+        # We still offload to a thread to avoid blocking the event loop.
         markdown = await anyio.to_thread.run_sync(_convert_to_markdown, path)
     except RuntimeError as exc:
         raise DocumentParseError(str(exc)) from exc
