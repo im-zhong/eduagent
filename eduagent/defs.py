@@ -52,6 +52,7 @@ class APIDefs:
 
     # System Endpoints
     HEALTH_CHECK = f"{BASE_PATH}/health"
+    VERSION = f"{BASE_PATH}/version"
 
 
 class Defs:

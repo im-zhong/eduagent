@@ -8,11 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from eduagent.api.security import require_service_token
 from eduagent.logger import get_logger
-from eduagent.storage.engine import async_engine
-from eduagent.user.models import Base
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from eduagent.agents.chat import get_agent, ensure_user_threads_table
-from eduagent.llm import get_chat_model
+# from eduagent.storage.engine import async_engine
+# from eduagent.user.models import Base
+# from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+# from eduagent.agents.chat import get_agent, ensure_user_threads_table
+# from eduagent.llm import get_chat_model
 
 # --------------------
 from .endpoints import api_routers
@@ -53,31 +53,14 @@ api_logger = get_logger(__name__, component="api.core")
 
 # 看起来我们必须先启动一个pg了
 # 看起来async pg saver的内部实现并没有使用sqlalchemy，直接用的psycopg
-DB_URI = "postgresql://ysu_keg:123456789@db.eduagent:5432/eduagent?sslmode=disable"
+# DB_URI = "postgresql://ysu_keg:123456789@db.eduagent:5432/eduagent?sslmode=disable"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with (
-        async_engine.begin() as conn,
-        AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer,
-    ):
-        # DB schema init
-        await conn.run_sync(Base.metadata.create_all)
-
-        # Checkpointer setup
-        await checkpointer.setup()
-        await ensure_user_threads_table(checkpointer.conn)
-
-        # create llm
-        llm = get_chat_model()
-
-        # Agent init
-        agent = get_agent(model=llm, checkpointer=checkpointer)
-        app.state.agent = agent
-        app.state.conn = checkpointer.conn
-
-        yield
+    # Storage/agent modules are temporarily removed for this milestone.
+    # Keep lifespan minimal so health/version endpoints work without dependencies.
+    yield
 
     # teardown happens automatically in reverse order
 
@@ -125,10 +108,15 @@ async def root() -> dict[str, str]:
     }
 
 
-@api.get("/health", include_in_schema=False)
+@api.get("/api/v1/health", include_in_schema=False)
 async def health_check() -> dict[str, str]:
     api_logger.debug("Health check endpoint requested")
     return {"status": "healthy", "service": "eduagent-api"}
+
+@api.get("/api/v1/version", include_in_schema=False)
+async def version_check() -> dict[str, str]:
+    api_logger.debug("Version endpoint requested")
+    return {"name": "eduagent", "version": "1.0.0"}
 
 
 @api.get("/service-auth/verify", include_in_schema=False)

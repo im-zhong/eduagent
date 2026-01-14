@@ -132,11 +132,19 @@ def _load_api_client() -> EduAgentAPIClient:
         st.session_state.api_base_url = base_url
     token = cast(str | None, st.session_state.get("service_jwt"))
     client = st.session_state.get("api_client")
-    if isinstance(client, EduAgentAPIClient):
-        client.configure(base_url, token)
-        return client
+    # Always recreate to avoid stale cached instances across Streamlit reloads.
     st.session_state.api_client = EduAgentAPIClient(base_url, token)
     return st.session_state.api_client
+
+    # if isinstance(client, EduAgentAPIClient):
+    #     # Streamlit may cache an older client instance across code updates.
+    #     if not hasattr(client, "health_check"):
+    #         st.session_state.pop("api_client", None)
+    #     else:
+    #         client.configure(base_url, token)
+    #         return client
+    # st.session_state.api_client = EduAgentAPIClient(base_url, token)
+    # return st.session_state.api_client
 
 
 def _configure_sidebar(client: EduAgentAPIClient) -> None:

@@ -16,6 +16,13 @@ def render(client: EduAgentAPIClient) -> None:
             else:
                 st.success("API 正常")
                 st.json(result)
+            version = client.version_check()
+            if "error" in version:
+                st.warning(version["error"])
+            else:
+                st.caption(
+                    f"{version.get('name', 'eduagent')} {version.get('version', '')}".strip()
+                )
 
     st.subheader("工作流程")
     st.markdown(

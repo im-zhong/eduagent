@@ -32,48 +32,51 @@ class EduAgentAPIClient:
         self.base_url = base_url.rstrip("/")
         self.service_token = service_token
 
-    # def _headers(self) -> dict[str, str]:
-    #     headers: dict[str, str] = {}
-    #     if self.service_token:
-    #         headers["Authorization"] = f"Bearer {self.service_token}"
-    #     return headers
+    def _headers(self) -> dict[str, str]:
+        headers: dict[str, str] = {}
+        if self.service_token:
+            headers["Authorization"] = f"Bearer {self.service_token}"
+        return headers
 
-    # def _make_request(
-    #     self,
-    #     endpoint: str,
-    #     method: str = "GET",
-    #     **request_kwargs: object,
-    # ) -> dict[str, Any]:
-    #     url = f"{self.base_url}{endpoint}"
-    #     options = cast(dict[str, Any], request_kwargs)
-    #     json_data = options.pop("json_data", None)
-    #     data = options.pop("data", None)
-    #     files = options.pop("files", None)
-    #     params = options.pop("params", None)
-    #     try:
-    #         response = requests.request(
-    #             method=method.upper(),
-    #             url=url,
-    #             json=json_data,
-    #             data=data,
-    #             files=files,
-    #             params=params,
-    #             headers=self._headers(),
-    #             timeout=self.timeout,
-    #             **options,
-    #         )
-    #     except requests.RequestException as exc:
-    #         return {"error": f"请求失败：{exc!s}"}
+    def _make_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        **request_kwargs: object,
+    ) -> dict[str, Any]:
+        url = f"{self.base_url}{endpoint}"
+        options = cast(dict[str, Any], request_kwargs)
+        json_data = options.pop("json_data", None)
+        data = options.pop("data", None)
+        files = options.pop("files", None)
+        params = options.pop("params", None)
+        try:
+            response = requests.request(
+                method=method.upper(),
+                url=url,
+                json=json_data,
+                data=data,
+                files=files,
+                params=params,
+                headers=self._headers(),
+                timeout=self.timeout,
+                **options,
+            )
+        except requests.RequestException as exc:
+            return {"error": f"请求失败：{exc!s}"}
 
-    #     if response.status_code in HTTP_SUCCESS_CODES:
-    #         try:
-    #             return response.json()
-    #         except ValueError:
-    #             return {"status": response.status_code}
-    #     return {"error": f"HTTP {response.status_code}: {response.text}"}
+        if response.status_code in HTTP_SUCCESS_CODES:
+            try:
+                return response.json()
+            except ValueError:
+                return {"status": response.status_code}
+        return {"error": f"HTTP {response.status_code}: {response.text}"}
 
-    # def health_check(self) -> dict[str, Any]:
-    #     return self._make_request(defs.api.HEALTH_CHECK)
+    def health_check(self) -> dict[str, Any]:
+        return self._make_request(defs.api.HEALTH_CHECK)
+
+    def version_check(self) -> dict[str, Any]:
+        return self._make_request(defs.api.VERSION)
 
     # def upload_ingestion_document(
     #     self, filename: str, file_bytes: bytes, subject: str, grade_level: str
