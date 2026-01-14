@@ -7,8 +7,9 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from eduagent.api.security import require_service_token
+from eduagent.documents.models import Base as DocumentsBase
 from eduagent.logger import get_logger
-# from eduagent.storage.engine import async_engine
+from eduagent.storage.engine import async_engine, create_tables_for_module
 # from eduagent.user.models import Base
 # from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 # from eduagent.agents.chat import get_agent, ensure_user_threads_table
@@ -58,11 +59,16 @@ api_logger = get_logger(__name__, component="api.core")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Storage/agent modules are temporarily removed for this milestone.
-    # Keep lifespan minimal so health/version endpoints work without dependencies.
+    """Application lifespan manager."""
+    # Create database tables for documents module
+    api_logger.info("Creating database tables for documents module")
+    await create_tables_for_module(DocumentsBase)
+    api_logger.info("API startup complete")
+
     yield
 
     # teardown happens automatically in reverse order
+    api_logger.info("API shutdown sequence completed")
 
 
 # Create FastAPI application

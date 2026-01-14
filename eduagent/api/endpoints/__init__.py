@@ -1,6 +1,7 @@
 # from .analytics import router as analytics_router
 # from .assessment import router as assessment_router
 from .chat import router as chat_router
+from .documents import router as documents_router
 # from .exercises import router as exercises_router
 # from .knowledge import router as knowledge_router
 # from .questions import router as questions_router
@@ -15,6 +16,7 @@ api_routers = [
     # questions_router,
     # quiz_router,
     chat_router,
+    documents_router,
 ]
 
 # Export for main app

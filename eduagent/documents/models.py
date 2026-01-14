@@ -56,3 +56,16 @@ class DocumentResponse(BaseModel):
     content_type: str
     created_at: datetime
     updated_at: datetime
+
+
+class DocumentParseRequest(BaseModel):
+    """Schema for parsing a document."""
+
+    doc_id: int = Field(..., gt=0, description="Source document ID")
+
+
+class DocumentParseResponse(BaseModel):
+    """Schema for document parse response."""
+
+    doc_id: int
+    chunk_count: int

@@ -78,6 +78,41 @@ class EduAgentAPIClient:
     def version_check(self) -> dict[str, Any]:
         return self._make_request(defs.api.VERSION)
 
+    def upload_document(
+        self, filename: str, file_bytes: bytes
+    ) -> dict[str, Any]:
+        """Upload a document to the system.
+
+        Args:
+            filename: Name of the file to upload
+            file_bytes: File content as bytes
+
+        Returns:
+            API response with document metadata
+        """
+        files = {"file": (filename, file_bytes)}
+        return self._make_request("/api/v1/documents", "POST", files=files)
+
+    def list_documents(self) -> dict[str, Any]:
+        """List all uploaded documents.
+
+        Returns:
+            API response with list of documents
+        """
+        return self._make_request("/api/v1/documents", "GET")
+
+    def get_document(self, document_id: int) -> dict[str, Any]:
+        """Get a specific document by ID.
+
+        Args:
+            document_id: ID of the document
+
+        Returns:
+            API response with document metadata
+        """
+        endpoint = f"/api/v1/documents/{document_id}"
+        return self._make_request(endpoint, "GET")
+
     # def upload_ingestion_document(
     #     self, filename: str, file_bytes: bytes, subject: str, grade_level: str
     # ) -> dict[str, Any]:

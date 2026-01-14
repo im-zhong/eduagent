@@ -1,10 +1,11 @@
 """
 Operations console for EduAgent.
-Provides pages for ingestion, workflow execution, and analytics using the new quiz APIs.
+Provides pages for ingestion, workflow execution, and analytics using new quiz APIs.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import cast
 
 import streamlit as st
@@ -13,6 +14,8 @@ import streamlit as st
 # from eduagent.ui import common
 from eduagent.ui.api_client import EduAgentAPIClient
 from eduagent.ui.pages import (
+    agent_chat,
+    documents,
     # agent_workflow,
     # analytics_monitor,
     # async_pipeline,
@@ -21,7 +24,6 @@ from eduagent.ui.pages import (
     # rag_chat,
     # scoring_studio,
     # workflow_runner,
-    agent_chat,
 )
 
 
@@ -36,18 +38,21 @@ class UIDefs:
     STUDENT_DASHBOARD_TITLE = "EduAgent - Student Dashboard"
     PAGE_ICON = "📚"
 
-    # Navigation options
-    TEACHER_NAV_OPTIONS: list[str] = [
-        "总览",
-        # "数据解析",
-        # "工作流运行",
-        "Agent 对话",
-        # "ReAct 代理",
-        # "RAG 对话",
-        # "异步流水线",
-        # "评分工作台",
-        # "数据监控",
+    # Navigation options with page handlers
+    TEACHER_PAGES: list[tuple[str, Callable[[EduAgentAPIClient], None]]] = [
+        ("总览", overview.render),
+        ("文档管理", documents.render),
+        ("Agent 对话", agent_chat.render),
+        # ("数据解析", ingestion_lab.render),
+        # ("工作流运行", workflow_runner.render),
+        # ("ReAct 代理", agent_workflow.render),
+        # ("RAG 对话", rag_chat.render),
+        # ("异步流水线", async_pipeline.render),
+        # ("评分工作台", scoring_studio.render),
+        # ("数据监控", analytics_monitor.render),
     ]
+
+    TEACHER_NAV_OPTIONS: list[str] = [name for name, _ in TEACHER_PAGES]
 
     STUDENT_NAV_OPTIONS: list[str] = []
 
@@ -166,21 +171,6 @@ def _configure_sidebar(client: EduAgentAPIClient) -> None:
         st.sidebar.success("配置已更新。")
 
 
-# prototype 先把系统跑起来！我现在要转变我的思路！
-# TODO: 这个key竟然出现了两次！do not repeat your self
-PAGE_HANDLERS = {
-    "总览": overview.render,
-    # "数据解析": ingestion_lab.render,
-    # "工作流运行": workflow_runner.render,
-    "Agent 对话": agent_chat.render,
-    # "ReAct 代理": agent_workflow.render,
-    # "RAG 对话": rag_chat.render,
-    # "异步流水线": async_pipeline.render,
-    # "评分工作台": scoring_studio.render,
-    # "数据监控": analytics_monitor.render,
-}
-
-
 def main() -> None:
     st.set_page_config(
         page_title="出题智能体 Demo",
@@ -194,9 +184,8 @@ def main() -> None:
     st.sidebar.markdown("---")
 
     tabs = st.tabs(uidefs.TEACHER_NAV_OPTIONS)
-    for tab, page_name in zip(tabs, uidefs.TEACHER_NAV_OPTIONS):
-        handler = PAGE_HANDLERS.get(page_name, overview.render)
-        # https://docs.streamlit.io/develop/api-reference/layout/st.tabs
+    for tab, (_, handler) in zip(tabs, uidefs.TEACHER_PAGES):
+        # https://docs.streamlit.io/develop/api-reference/layout/stabs
         # To add elements to the returned containers, you can use the with notation (preferred)
         # conditional render:
         # All content within every tab is computed and sent to the frontend, regardless of which tab is selected.

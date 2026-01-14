@@ -267,7 +267,7 @@ LangGraph ✅（多步推理）
 
 **目标**
 
-- 将文档转换为 markdown 并生成 chunk 列表
+- 将文档转换为 markdown 并生成 chunks，用于后续向量化
 
 **依赖**
 
@@ -277,8 +277,7 @@ LangGraph ✅（多步推理）
 **产出**
 
 - 表: `document_chunk`（id, doc_id, text, chunk_index）
-- API: `POST /documents/{id}/parse`, `GET /documents/{id}/chunks`
-- UI: 文档详情页显示 chunks
+- API: `POST /documents/{id}/parse`
 
 **需要做什么**
 
@@ -288,11 +287,11 @@ LangGraph ✅（多步推理）
 
 **如何测试**
 
-- 对上传文档执行解析并查看 chunks
+- 对上传文档执行解析并检查返回的 chunk 数量
 
 **验收标准**
 
-- 每个文档有可浏览的 chunk 列表
+- 文档解析成功，chunks 可用于后续向量化流程
 
 ### 阶段 4：Embedding + Milvus 检索
 
