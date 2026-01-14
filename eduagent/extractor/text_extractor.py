@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field
 
 secret_key = "XXXXXXXXXX"
 
+## 这个就非常不错，就用这个prompt
+
 
 def call_zhipu_api(messages: list[dict[str, str]], model: str = "glm-4.5"):  # noqa: ANN201
     url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"

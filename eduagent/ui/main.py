@@ -9,20 +9,96 @@ from typing import cast
 
 import streamlit as st
 
-from eduagent.defs import defs
-from eduagent.ui import common
+
+# from eduagent.ui import common
 from eduagent.ui.api_client import EduAgentAPIClient
 from eduagent.ui.pages import (
-    agent_workflow,
-    analytics_monitor,
-    async_pipeline,
-    ingestion_lab,
+    # agent_workflow,
+    # analytics_monitor,
+    # async_pipeline,
+    # ingestion_lab,
     overview,
-    rag_chat,
-    scoring_studio,
-    workflow_runner,
+    # rag_chat,
+    # scoring_studio,
+    # workflow_runner,
     agent_chat,
 )
+
+
+# 这个东西不应该在这里，尽可能减少这种全局模块吧，我突然觉得非常的不合适
+# 包括咱们之前考虑到的，settings模块也不会进入到每个模块的依赖里面了，其实背后的原理都是一样的
+# 就是高内聚 低耦合！
+class UIDefs:
+    """UI-related constants and definitions"""
+
+    # Page titles and icons
+    TEACHER_DASHBOARD_TITLE = "EduAgent - Teacher Dashboard"
+    STUDENT_DASHBOARD_TITLE = "EduAgent - Student Dashboard"
+    PAGE_ICON = "📚"
+
+    # Navigation options
+    TEACHER_NAV_OPTIONS: list[str] = [
+        "总览",
+        # "数据解析",
+        # "工作流运行",
+        "Agent 对话",
+        # "ReAct 代理",
+        # "RAG 对话",
+        # "异步流水线",
+        # "评分工作台",
+        # "数据监控",
+    ]
+
+    STUDENT_NAV_OPTIONS: list[str] = []
+
+    # Subject options
+    SUBJECTS: list[str] = [
+        "Math",
+        "Science",
+        "History",
+        "Language",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Science",
+    ]
+
+    # Grade levels
+    GRADE_LEVELS: list[str] = [
+        "Elementary",
+        "Middle School",
+        "High School",
+        "College",
+    ]
+
+    # Question types
+    QUESTION_TYPES: list[str] = [
+        "Multiple Choice",
+        "True/False",
+        "Short Answer",
+        "Essay",
+        "Calculation",
+        "Fill in Blank",
+    ]
+
+    # Difficulty levels
+    DIFFICULTY_LEVELS: list[str] = ["Easy", "Medium", "Hard"]
+
+    # Cognitive levels
+    COGNITIVE_LEVELS: list[str] = [
+        "Memory",
+        "Understanding",
+        "Application",
+        "Analysis",
+        "Evaluation",
+        "Creation",
+    ]
+
+    # Time periods for analytics
+    TIME_PERIODS: list[str] = ["7 days", "30 days", "90 days", "All time"]
+
+
+uidefs = UIDefs()
 
 DEFAULT_API_URL = "http://api.eduagent:8000"
 
@@ -82,23 +158,25 @@ def _configure_sidebar(client: EduAgentAPIClient) -> None:
         st.sidebar.success("配置已更新。")
 
 
+# prototype 先把系统跑起来！我现在要转变我的思路！
+# TODO: 这个key竟然出现了两次！do not repeat your self
 PAGE_HANDLERS = {
     "总览": overview.render,
-    "数据解析": ingestion_lab.render,
-    "工作流运行": workflow_runner.render,
+    # "数据解析": ingestion_lab.render,
+    # "工作流运行": workflow_runner.render,
     "Agent 对话": agent_chat.render,
-    "ReAct 代理": agent_workflow.render,
-    "RAG 对话": rag_chat.render,
-    "异步流水线": async_pipeline.render,
-    "评分工作台": scoring_studio.render,
-    "数据监控": analytics_monitor.render,
+    # "ReAct 代理": agent_workflow.render,
+    # "RAG 对话": rag_chat.render,
+    # "异步流水线": async_pipeline.render,
+    # "评分工作台": scoring_studio.render,
+    # "数据监控": analytics_monitor.render,
 }
 
 
 def main() -> None:
     st.set_page_config(
         page_title="出题智能体 Demo",
-        page_icon=defs.ui.PAGE_ICON,
+        page_icon=uidefs.PAGE_ICON,
         layout="wide",
     )
     _bootstrap_session_state()
@@ -107,10 +185,19 @@ def main() -> None:
     _configure_sidebar(client)
     st.sidebar.markdown("---")
 
-    tabs = st.tabs(defs.ui.TEACHER_NAV_OPTIONS)
-    for tab, page_name in zip(tabs, defs.ui.TEACHER_NAV_OPTIONS):
+    tabs = st.tabs(uidefs.TEACHER_NAV_OPTIONS)
+    for tab, page_name in zip(tabs, uidefs.TEACHER_NAV_OPTIONS):
         handler = PAGE_HANDLERS.get(page_name, overview.render)
+        # https://docs.streamlit.io/develop/api-reference/layout/st.tabs
+        # To add elements to the returned containers, you can use the with notation (preferred)
+        # conditional render:
+        # All content within every tab is computed and sent to the frontend, regardless of which tab is selected.
+        # Tabs do not currently support conditional rendering.
+        # If you have a slow-loading tab, consider using a widget like st.segmented_control to conditionally render content instead.
         with tab:
+            # oooooo! 在这里执行函数就行了，和直接写streamlit代码是一样的
+            # 所以用来封装streamlit代码的函数没有什么特别的，就是普通的函数里面放上streamlit代码就行了
+            # 然后就只需要在st.tabs返回的tab里面with tab然后执行streamlit代码就ok了！
             handler(client)
 
 

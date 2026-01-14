@@ -57,42 +57,42 @@ markers = [
     "integration: marks tests as integration tests (requires external services)",
 ]
 
-[tool.ruff.lint]
-select = ["ALL"]
-ignore = [
-    "D",
-    "ERA",
-    "PGH",
-    "RUF003",
-    "E501",
-    "COM",
-    "FA102",
-    "T20",
-    "TD",
-    "FIX",
-    "BLE",
-    "S",
-    "G",
-    "TC",
-    "RUF001",
-    "B008",
-]
+# [tool.ruff.lint]
+# select = ["ALL"]
+# ignore = [
+#     "D",
+#     "ERA",
+#     "PGH",
+#     "RUF003",
+#     "E501",
+#     "COM",
+#     "FA102",
+#     "T20",
+#     "TD",
+#     "FIX",
+#     "BLE",
+#     "S",
+#     "G",
+#     "TC",
+#     "RUF001",
+#     "B008",
+# ]
 
 
-[tool.pyright]
-pythonVersion = "3.13"
-typeCheckingMode = "strict"
-venvPath = "."
-venv = ".venv"
-include = ["eduagent", "tests"]
-exclude = [
-    "**/node_modules",
-    "**/__pycache__",
-    ".venv",
-    "build",
-    "dist",
-    "data",
-]
+# [tool.pyright]
+# pythonVersion = "3.13"
+# typeCheckingMode = "strict"
+# venvPath = "."
+# venv = ".venv"
+# include = ["eduagent", "tests"]
+# exclude = [
+#     "**/node_modules",
+#     "**/__pycache__",
+#     ".venv",
+#     "build",
+#     "dist",
+#     "data",
+# ]
 
 #[tool.pyright.report]
 # reportUnknownMemberType = "none"
@@ -106,6 +106,6 @@ reportMissingTypeStubs = false
 [tool.setuptools]
 packages = ["eduagent"]
 
-[tool.ruff.lint.per-file-ignores]
-"eduagent/api/api.py" = ["ARG001"]
-"eduagent/user/manager.py" = ["ARG002"]
+# [tool.ruff.lint.per-file-ignores]
+# "eduagent/api/api.py" = ["ARG001"]
+# "eduagent/user/manager.py" = ["ARG002"]

@@ -35,7 +35,7 @@ from eduagent.agents.chat import (
     insert_user_thread,
 )
 from langchain.messages import HumanMessage
-from eduagent.agents.chat import MessagesState
+# from eduagent.agents.chat import MessagesState
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from contextlib import asynccontextmanager
@@ -246,11 +246,11 @@ async def get_thread_chat_messages(
     return messages
 
 
-# @router.get("/new-chat")
-# async def get_new_chat(user_id: str, request: Request) -> str:
-#     app = request.app
-#     thread_id = str(uuid.uuid4())
-#     await init_new_agent_thread(
-#         agent=app.state.agent, user_id=user_id, thread_id=thread_id
-#     )
-#     return thread_id
+@router.get("/new-chat")
+async def get_new_chat(user_id: str, request: Request) -> str:
+    app = request.app
+    thread_id = str(uuid.uuid4())
+    await init_new_agent_thread(
+        agent=app.state.agent, user_id=user_id, thread_id=thread_id
+    )
+    return thread_id

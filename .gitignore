@@ -190,3 +190,5 @@ volumes/
 
 # streamlit
 .streamlit/
+
+tmp/

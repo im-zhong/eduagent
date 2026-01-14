@@ -42,8 +42,6 @@ class MessagesState(TypedDict):
     llm_calls: int
 
 
-
-
 def get_agent(
     model: BaseChatModel,
     checkpointer: BaseCheckpointSaver,

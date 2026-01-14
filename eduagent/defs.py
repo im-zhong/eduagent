@@ -55,76 +55,6 @@ class APIDefs:
     HEALTH_CHECK = f"{BASE_PATH}/health"
 
 
-class UIDefs:
-    """UI-related constants and definitions"""
-
-    # Page titles and icons
-    TEACHER_DASHBOARD_TITLE = "EduAgent - Teacher Dashboard"
-    STUDENT_DASHBOARD_TITLE = "EduAgent - Student Dashboard"
-    PAGE_ICON = "📚"
-
-    # Navigation options
-    TEACHER_NAV_OPTIONS: ClassVar[list[str]] = [
-        "总览",
-        "数据解析",
-        # "工作流运行",
-        "Agent 对话",
-        # "ReAct 代理",
-        # "RAG 对话",
-        # "异步流水线",
-        # "评分工作台",
-        # "数据监控",
-    ]
-
-    STUDENT_NAV_OPTIONS: ClassVar[list[str]] = []
-
-    # Subject options
-    SUBJECTS: ClassVar[list[str]] = [
-        "Math",
-        "Science",
-        "History",
-        "Language",
-        "Physics",
-        "Chemistry",
-        "Biology",
-        "Computer Science",
-    ]
-
-    # Grade levels
-    GRADE_LEVELS: ClassVar[list[str]] = [
-        "Elementary",
-        "Middle School",
-        "High School",
-        "College",
-    ]
-
-    # Question types
-    QUESTION_TYPES: ClassVar[list[str]] = [
-        "Multiple Choice",
-        "True/False",
-        "Short Answer",
-        "Essay",
-        "Calculation",
-        "Fill in Blank",
-    ]
-
-    # Difficulty levels
-    DIFFICULTY_LEVELS: ClassVar[list[str]] = ["Easy", "Medium", "Hard"]
-
-    # Cognitive levels
-    COGNITIVE_LEVELS: ClassVar[list[str]] = [
-        "Memory",
-        "Understanding",
-        "Application",
-        "Analysis",
-        "Evaluation",
-        "Creation",
-    ]
-
-    # Time periods for analytics
-    TIME_PERIODS: ClassVar[list[str]] = ["7 days", "30 days", "90 days", "All time"]
-
-
 class Defs:
     @property
     def pathes(self) -> Pathes:
@@ -134,9 +64,9 @@ class Defs:
     def api(self) -> APIDefs:
         return APIDefs()
 
-    @property
-    def ui(self) -> UIDefs:
-        return UIDefs()
+    # @property
+    # def ui(self) -> UIDefs:
+    #     return UIDefs()
 
 
 def new_defs() -> Defs:

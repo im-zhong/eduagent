@@ -4,7 +4,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from eduagent.quiz.enums import JobStatus, JobType
+# from eduagent.quiz.enums import JobStatus, JobType
+
+# 这里面绝大多数schema都没有用到
 
 
 class DifficultyLevel(str, Enum):
@@ -216,20 +218,20 @@ class RagChatStreamRequest(BaseModel):
 
 
 # ============ Quiz Pipeline Schemas ============
-class QuizJobHandleResponse(BaseModel):
-    job_id: str
-    job_type: JobType
-    status: JobStatus
-    task_id: str | None = None
+# class QuizJobHandleResponse(BaseModel):
+#     job_id: str
+#     job_type: JobType
+#     status: JobStatus
+#     task_id: str | None = None
 
 
-class QuizJobDetailResponse(QuizJobHandleResponse):
-    parent_job_id: str | None = None
-    subject: SubjectArea | None = None
-    grade_level: str | None = None
-    payload: dict[str, Any] = Field(default_factory=dict)
-    result: dict[str, Any] = Field(default_factory=dict)
-    error_message: str | None = None
+# class QuizJobDetailResponse(QuizJobHandleResponse):
+#     parent_job_id: str | None = None
+#     subject: SubjectArea | None = None
+#     grade_level: str | None = None
+#     payload: dict[str, Any] = Field(default_factory=dict)
+#     result: dict[str, Any] = Field(default_factory=dict)
+#     error_message: str | None = None
 
 
 class QuizIngestionListItem(BaseModel):

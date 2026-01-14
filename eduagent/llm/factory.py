@@ -87,9 +87,9 @@ def get_deepseek_chat_model() -> ChatDeepSeek:
 
 
 def get_chat_model() -> BaseChatModel:
-    return get_deepseek_chat_model()
+    # return get_deepseek_chat_model()
     # return get_zhipu_chat_model()
-    # return get_qwen_local_model()
+    return get_qwen_local_model()
 
 
 # def get_chat_model(*, temperature: float | None = None) -> ChatOpenAI:
