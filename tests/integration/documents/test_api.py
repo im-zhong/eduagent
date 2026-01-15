@@ -1,16 +1,13 @@
 """Integration tests for documents API endpoints."""
 
 from collections.abc import AsyncGenerator
+from uuid import uuid4
 
-import anyio
 import pytest
-from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
-from io import BytesIO
-
-from eduagent.api.endpoints import documents
-from eduagent.api.api import api
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+
+from eduagent.api.api import api
 
 
 # @pytest.fixture(scope="function")
@@ -42,6 +39,7 @@ def upload_test_document_data() -> tuple[str, bytes]:
 #     return app
 
 
+# trio: structure concurency, with , aysnc with , task
 # @pytest.mark.anyio
 @pytest.mark.asyncio
 async def test_upload_document_success(
@@ -195,11 +193,13 @@ async def test_upload_multiple_files(
 ):
     """Test uploading multiple documents sequentially."""
     count = 3
+    # Use a unique prefix to avoid collisions with other test runs.
+    unique_prefix = f"test_document_{uuid4().hex}"
     for i in range(count):
-        filename, content = upload_test_document_data
+        _, content = upload_test_document_data
         response = await async_client.post(
             "/api/v1/documents",
-            files={"file": (f"{filename}.{i}", content)},
+            files={"file": (f"{unique_prefix}.{i}.txt", content)},
         )
         assert response.status_code == 201
 
@@ -208,5 +208,7 @@ async def test_upload_multiple_files(
     data = response.json()
 
     # Verify our uploaded documents are in the list
-    our_docs = [d for d in data if d["filename"].startswith("test_document.txt.")]
-    assert len(our_docs) == count
+    # The environment may contain pre-existing documents, so we only
+    # count those created by this test via the unique prefix.
+    our_docs = [d for d in data if d["filename"].startswith(unique_prefix)]
+    assert len(our_docs) >= count

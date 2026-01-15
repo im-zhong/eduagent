@@ -13,7 +13,7 @@ async def _get_json(path: str) -> tuple[int, dict[str, str]]:
     return response.status_code, response.json()
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_health_endpoint() -> None:
     status, payload = await _get_json("/api/v1/health")
     assert status == 200
@@ -21,7 +21,7 @@ async def test_health_endpoint() -> None:
     assert payload["service"] == "eduagent-api"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_version_endpoint() -> None:
     status, payload = await _get_json("/api/v1/version")
     assert status == 200

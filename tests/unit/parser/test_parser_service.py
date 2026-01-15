@@ -32,7 +32,7 @@ def _assert_pandoc_available() -> None:
     _ = pypandoc.get_pandoc_version()
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_convert_document_from_markdown_file(tmp_path: Path) -> None:
     markdown_path = tmp_path / "sample.md"
     markdown_path.write_text("Alpha paragraph.\n\nBeta paragraph.\n")
@@ -48,7 +48,7 @@ async def test_convert_document_from_markdown_file(tmp_path: Path) -> None:
     ]
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_convert_document_from_docx_file(tmp_path: Path) -> None:
     _assert_pandoc_available()
 
