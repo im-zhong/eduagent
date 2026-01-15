@@ -113,6 +113,30 @@ class EduAgentAPIClient:
         endpoint = f"/api/v1/documents/{document_id}"
         return self._make_request(endpoint, "GET")
 
+    def index_chunks(self, doc_id: int) -> dict[str, Any]:
+        """Index parsed document chunks into Milvus.
+
+        Args:
+            doc_id: Document ID with existing chunks.
+        """
+        endpoint = defs.api.INDEX_CHUNKS.format(doc_id=doc_id)
+        return self._make_request(endpoint, "POST")
+
+    def search_chunks(
+        self, query: str, top_k: int = 5, mode: str = "sparse"
+    ) -> dict[str, Any]:
+        """Search indexed chunks using sparse, dense, or hybrid retrieval."""
+        endpoints = {
+            "sparse": defs.api.SEARCH_CHUNKS,
+            "dense": defs.api.SEARCH_CHUNKS_DENSE,
+            "hybrid": defs.api.SEARCH_CHUNKS_HYBRID,
+        }
+        endpoint = endpoints.get(mode)
+        if not endpoint:
+            return {"error": f"未知检索类型: {mode}"}
+        payload = {"query": query, "top_k": top_k}
+        return self._make_request(endpoint, "POST", json_data=payload)
+
     # def upload_ingestion_document(
     #     self, filename: str, file_bytes: bytes, subject: str, grade_level: str
     # ) -> dict[str, Any]:

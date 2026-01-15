@@ -16,6 +16,7 @@ from eduagent.ui.api_client import EduAgentAPIClient
 from eduagent.ui.pages import (
     agent_chat,
     documents,
+    retrieval,
     # agent_workflow,
     # analytics_monitor,
     # async_pipeline,
@@ -42,6 +43,7 @@ class UIDefs:
     TEACHER_PAGES: list[tuple[str, Callable[[EduAgentAPIClient], None]]] = [
         ("总览", overview.render),
         ("文档管理", documents.render),
+        ("检索与索引", retrieval.render),
         ("Agent 对话", agent_chat.render),
         # ("数据解析", ingestion_lab.render),
         # ("工作流运行", workflow_runner.render),

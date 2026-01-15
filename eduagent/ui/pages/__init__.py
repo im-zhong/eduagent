@@ -3,5 +3,11 @@
 from .agent_chat import render as agent_chat_render
 from .documents import render as documents_render
 from .overview import render as overview_render
+from .retrieval import render as retrieval_render
 
-__all__ = ["agent_chat_render", "documents_render", "overview_render"]
+__all__ = [
+    "agent_chat_render",
+    "documents_render",
+    "overview_render",
+    "retrieval_render",
+]

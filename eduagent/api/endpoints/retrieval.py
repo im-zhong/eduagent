@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from eduagent.documents.repository import list_document_chunks
 from eduagent.logger import get_logger
-from eduagent.retrieval.milvus_client import MilvusClient, MilvusConfig
+from eduagent.retrieval.milvus_client import (
+    HybridWeights,
+    MilvusClient,
+    MilvusConfig,
+)
 from eduagent.retrieval.models import (
     IndexChunksResponse,
     SearchChunksRequest,
@@ -44,6 +48,10 @@ def _milvus_client() -> MilvusClient:
         database=settings.milvus.database,
         collection=settings.milvus.collection,
         dim=settings.milvus.dim,
+        hybrid_weights=HybridWeights(
+            dense=settings.milvus.hybrid_dense_weight,
+            sparse=settings.milvus.hybrid_sparse_weight,
+        ),
     )
     client = MilvusClient(config)
     client.connect()
@@ -94,7 +102,6 @@ async def index_chunks(
 )
 async def search_chunks_sparse(
     payload: SearchChunksRequest,
-    session: AsyncSession = Depends(get_async_session),
 ) -> SearchChunksResponse:
     """Run sparse retrieval using learned lexical embeddings."""
     bge = _bge_client()
@@ -123,7 +130,6 @@ async def search_chunks_sparse(
 )
 async def search_chunks_dense(
     payload: SearchChunksRequest,
-    session: AsyncSession = Depends(get_async_session),
 ) -> SearchChunksResponse:
     """Run dense retrieval without hybrid weighting."""
     bge = _bge_client()
@@ -146,7 +152,6 @@ async def search_chunks_dense(
 )
 async def search_chunks_hybrid(
     payload: SearchChunksRequest,
-    session: AsyncSession = Depends(get_async_session),
 ) -> SearchChunksResponse:
     """Run hybrid retrieval and rerank the results using BGE."""
     bge = _bge_client()
