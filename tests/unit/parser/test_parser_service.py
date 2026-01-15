@@ -7,7 +7,11 @@ import pytest
 
 from docx import Document
 
-from eduagent.parser.parser_service import parse_document, split_markdown
+from eduagent.parser.parser_service import (
+    chunk_markdown,
+    convert_document_to_markdown,
+    split_markdown,
+)
 
 
 def test_split_markdown_splits_on_blank_lines() -> None:
@@ -29,22 +33,23 @@ def _assert_pandoc_available() -> None:
 
 
 @pytest.mark.anyio
-async def test_parse_document_from_markdown_file(tmp_path: Path) -> None:
+async def test_convert_document_from_markdown_file(tmp_path: Path) -> None:
     markdown_path = tmp_path / "sample.md"
     markdown_path.write_text("Alpha paragraph.\n\nBeta paragraph.\n")
 
-    parsed = await parse_document(markdown_path)
+    markdown = await convert_document_to_markdown(markdown_path)
+    chunks = chunk_markdown(markdown)
 
-    assert parsed.path == str(markdown_path)
-    assert parsed.chunk_count == 2
-    assert [chunk.text for chunk in parsed.chunks] == [
+    assert "Alpha paragraph." in markdown
+    assert len(chunks) == 2
+    assert [chunk.text for chunk in chunks] == [
         "Alpha paragraph.",
         "Beta paragraph.",
     ]
 
 
 @pytest.mark.anyio
-async def test_parse_document_from_docx_file(tmp_path: Path) -> None:
+async def test_convert_document_from_docx_file(tmp_path: Path) -> None:
     _assert_pandoc_available()
 
     docx_path = tmp_path / "sample.docx"
@@ -53,11 +58,12 @@ async def test_parse_document_from_docx_file(tmp_path: Path) -> None:
     document.add_paragraph("Beta paragraph.")
     document.save(docx_path)
 
-    parsed = await parse_document(docx_path)
+    markdown = await convert_document_to_markdown(docx_path)
+    chunks = chunk_markdown(markdown)
 
-    assert parsed.path == str(docx_path)
-    assert parsed.chunk_count == 2
-    assert [chunk.text for chunk in parsed.chunks] == [
+    assert "Alpha paragraph." in markdown
+    assert len(chunks) == 2
+    assert [chunk.text for chunk in chunks] == [
         "Alpha paragraph.",
         "Beta paragraph.",
     ]
