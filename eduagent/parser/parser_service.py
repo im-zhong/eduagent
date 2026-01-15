@@ -39,7 +39,26 @@ def split_markdown(markdown: str) -> list[str]:
     return [part.strip() for part in parts if part.strip()]
 
 
+_MARKDOWN_SUFFIXES = {".md", ".markdown"}
+_PANDOC_FORMATS = {
+    ".txt": "markdown",
+    ".docx": "docx",
+    ".pdf": "pdf",
+}
+
+
+def _read_markdown(path: Path) -> str:
+    # TODO(zhangzhong): detect and handle non-utf-8 encodings.
+    return path.read_text(encoding="utf-8")
+
+
 def _convert_to_markdown(path: Path) -> str:
+    suffix = path.suffix.lower()
+    if suffix in _MARKDOWN_SUFFIXES:
+        return _read_markdown(path)
+    input_format = _PANDOC_FORMATS.get(suffix)
+    if input_format:
+        return pypandoc.convert_file(str(path), "md", format=input_format)
     return pypandoc.convert_file(str(path), "md")
 
 
