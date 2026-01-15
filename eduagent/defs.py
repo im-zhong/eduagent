@@ -54,6 +54,9 @@ class APIDefs:
     HEALTH_CHECK = f"{BASE_PATH}/health"
     VERSION = f"{BASE_PATH}/version"
 
+    # Document Endpoints
+    DOCUMENTS_PARSE = f"{BASE_PATH}/documents/parse"
+
 
 class Defs:
     @property

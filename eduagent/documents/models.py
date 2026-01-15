@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -35,6 +35,53 @@ class SourceDocument(Base):
     def __repr__(self) -> str:
         return f"<SourceDocument(id={self.id}, filename='{self.filename}')>"
 
+
+class DocumentArtifact(Base):
+    """Represents derived artifacts for a source document."""
+
+    __tablename__ = "document_artifact"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    doc_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("source_document.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    artifact_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentArtifact(id={self.id}, doc_id={self.doc_id})>"
+
+
+class DocumentChunk(Base):
+    """Represents parsed chunks for a source document."""
+
+    __tablename__ = "document_chunk"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    doc_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("source_document.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentChunk(id={self.id}, doc_id={self.doc_id})>"
 
 # Pydantic models for API serialization
 class DocumentCreate(BaseModel):
@@ -69,3 +116,5 @@ class DocumentParseResponse(BaseModel):
 
     doc_id: int
     chunk_count: int
+    artifact_id: int
+    artifact_path: str
