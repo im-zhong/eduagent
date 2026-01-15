@@ -39,6 +39,7 @@
 - **Purposeful comments**: New code should include brief comments at key points to explain intent/purpose, not restate obvious operations
 - Example: Database table definitions and CRUD logic should be in the specific module (e.g., `eduagent/documents/`), not a shared models directory
 - Generic table creation function (`create_tables_for_module()`) should be in the common storage module
+- **Comment density for AI-generated code**: AI-generated code should include comments for every several lines (2-5 lines) to explain the purpose and flow, making it easier to understand quickly without reading line-by-line
 
 ## Testing Strategy
 

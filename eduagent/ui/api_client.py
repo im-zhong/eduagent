@@ -10,6 +10,7 @@ from collections.abc import Generator
 from typing import Any, cast
 
 import requests
+from pydantic import BaseModel
 
 from eduagent.defs import defs
 
@@ -136,6 +137,14 @@ class EduAgentAPIClient:
             return {"error": f"未知检索类型: {mode}"}
         payload = {"query": query, "top_k": top_k}
         return self._make_request(endpoint, "POST", json_data=payload)
+
+    def unified_chat(self, payload: BaseModel) -> dict[str, Any]:
+        """Send a unified chat request to the backend."""
+        return self._make_request(
+            "/api/v1/chat/unified-chat",
+            "POST",
+            json_data=payload.model_dump(),
+        )
 
     # def upload_ingestion_document(
     #     self, filename: str, file_bytes: bytes, subject: str, grade_level: str

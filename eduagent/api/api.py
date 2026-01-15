@@ -10,6 +10,10 @@ from eduagent.api.security import require_service_token
 from eduagent.documents.models import Base as DocumentsBase
 from eduagent.logger import get_logger
 from eduagent.storage.engine import async_engine, create_tables_for_module
+from eduagent.settings import settings
+from eduagent.llm import get_chat_model
+from eduagent.agents.chat import get_agent, ensure_user_threads_table
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 # from eduagent.user.models import Base
 # from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 # from eduagent.agents.chat import get_agent, ensure_user_threads_table
@@ -67,11 +71,22 @@ async def lifespan(app: FastAPI):
     # Create database tables for documents module
     api_logger.info("Creating database tables for documents module")
     await create_tables_for_module(DocumentsBase)
-    api_logger.info("API startup complete")
+    api_logger.info("Initializing LangGraph checkpointer and chat agent")
+    conn_str = (
+        "postgresql://"
+        f"{settings.database.user}:{settings.database.password}"
+        f"@{settings.database.host}:{settings.database.port}"
+        f"/{settings.database.name}"
+    )
+    async with AsyncPostgresSaver.from_conn_string(conn_str) as checkpointer:
+        await checkpointer.setup()
+        await ensure_user_threads_table(checkpointer.conn)
+        agent = get_agent(get_chat_model(), checkpointer)
+        app.state.agent = agent
+        app.state.conn = checkpointer.conn
+        api_logger.info("API startup complete")
+        yield
 
-    yield
-
-    # teardown happens automatically in reverse order
     api_logger.info("API shutdown sequence completed")
 
 

@@ -34,6 +34,7 @@ from eduagent.agents.chat import (
     ensure_user_threads_table,
     insert_user_thread,
 )
+from eduagent.unified_chat.prototype import build_unified_chat_graph
 from langchain.messages import HumanMessage
 # from eduagent.agents.chat import MessagesState
 
@@ -50,7 +51,6 @@ from fastapi import (
     UploadFile,
     status,
 )
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from fastapi import Request
 
 llm = get_chat_model()
@@ -254,3 +254,71 @@ async def get_new_chat(user_id: str, request: Request) -> str:
         agent=app.state.agent, user_id=user_id, thread_id=thread_id
     )
     return thread_id
+
+
+# ============ Unified Chat Endpoints ============
+
+
+async def unified_agent_chat(unified_graph, message: AgentMessage, session):
+    """Stream unified chat with intent routing.
+
+    Args:
+        unified_graph: Compiled unified chat graph
+        message: User message with user_id and thread_id
+        session: Database session for quiz agent
+
+    Yields:
+        SSE tokens for streaming response
+
+    Note:
+        Routes to chat or quiz agent based on keyword intent detection.
+    """
+    config = get_config(user_id=message.user_id, thread_id=message.thread_id)
+
+    # Get current thread history if any
+    from eduagent.unified_chat.prototype import UnifiedChatState
+    state: UnifiedChatState = {
+        "messages": [HumanMessage(content=message.message)],
+        "intent": None,
+        "workspace": {},
+        "llm_calls": 0,
+    }
+
+    async for chunk in unified_graph.astream(
+        state,
+        stream_mode="messages",
+        config=config,
+    ):
+        # chunk[0] is the list of messages, chunk[0][-1] is the new message
+        messages = chunk[0]
+        if messages:
+            new_message = messages[-1]
+            yield f"data: {json.dumps({'token': new_message.content, 'workspace': chunk[-1].get('workspace', {})})}\n\n"
+
+
+@router.post("/unified-chat")
+def do_unified_agent_chat(input: AgentMessage, request: Request):
+    """Unified chat endpoint with intent-based agent routing.
+
+    Routes to different agents based on keyword detection:
+    - "出题", "生成题目", "quiz", "question" → Quiz agent
+    - Everything else → Chat agent
+
+    Returns streaming response with tokens and workspace artifacts.
+    """
+    app = request.app
+
+    # Build unified graph with chat agent
+    # Note: session is None for chat agent to work, will be handled in full implementation
+    unified_graph = build_unified_chat_graph(
+        agent=app.state.agent, session=None
+    )
+
+    return StreamingResponse(
+        unified_agent_chat(unified_graph, input, None),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )

@@ -36,7 +36,7 @@ class Quiz(Base):
         nullable=False,
     )
 
-    quiz_references: Mapped[list[QuizReference]] = relationship(
+    quiz_references: Mapped[list["QuizReference"]] = relationship(
         "QuizReference", back_populates="quiz", cascade="all, delete-orphan"
     )
 

@@ -17,6 +17,7 @@ from eduagent.ui.pages import (
     agent_chat,
     documents,
     retrieval,
+    unified_chat,
     # agent_workflow,
     # analytics_monitor,
     # async_pipeline,
@@ -44,6 +45,7 @@ class UIDefs:
         ("总览", overview.render),
         ("文档管理", documents.render),
         ("检索与索引", retrieval.render),
+        ("统一对话", unified_chat.render),
         ("Agent 对话", agent_chat.render),
         # ("数据解析", ingestion_lab.render),
         # ("工作流运行", workflow_runner.render),
@@ -138,10 +140,8 @@ def _load_api_client() -> EduAgentAPIClient:
         base_url = DEFAULT_API_URL
         st.session_state.api_base_url = base_url
     token = cast(str | None, st.session_state.get("service_jwt"))
-    client = st.session_state.get("api_client")
-    # Always recreate to avoid stale cached instances across Streamlit reloads.
-    st.session_state.api_client = EduAgentAPIClient(base_url, token)
-    return st.session_state.api_client
+    # Always create a fresh client to avoid stale cached instances.
+    return EduAgentAPIClient(base_url, token)
 
     # if isinstance(client, EduAgentAPIClient):
     #     # Streamlit may cache an older client instance across code updates.
