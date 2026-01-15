@@ -33,6 +33,9 @@ class APIDefs:
     # Base API path
     BASE_PATH = "/api/v1"
 
+    # TODO(zhangzhong): move module-specific API defs into their own modules and
+    # aggregate here to reduce coupling (e.g., documents, retrieval).
+
     # Quiz Pipeline Endpoints
     QUIZ_BASE = f"{BASE_PATH}/quiz"
     QUIZ_UPLOAD = f"{QUIZ_BASE}/upload"
@@ -56,6 +59,12 @@ class APIDefs:
 
     # Document Endpoints
     DOCUMENTS_PARSE = f"{BASE_PATH}/documents/parse"
+
+    # Retrieval Endpoints
+    INDEX_CHUNKS = f"{BASE_PATH}/index/chunks/{{doc_id}}"
+    SEARCH_CHUNKS = f"{BASE_PATH}/search/chunks"
+    SEARCH_CHUNKS_DENSE = f"{BASE_PATH}/search/chunks/dense"
+    SEARCH_CHUNKS_HYBRID = f"{BASE_PATH}/search/chunks/hybrid"
 
 
 class Defs:
