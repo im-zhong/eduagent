@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from eduagent.documents.models import DocumentArtifact, DocumentChunk, SourceDocument
 
 
@@ -46,3 +48,15 @@ async def create_document_chunks(
     for chunk in chunk_rows:
         await session.refresh(chunk)
     return chunk_rows
+
+
+async def list_document_chunks(
+    session: AsyncSession,
+    doc_id: int,
+) -> list[DocumentChunk]:
+    result = await session.execute(
+        select(DocumentChunk)
+        .where(DocumentChunk.doc_id == doc_id)
+        .order_by(DocumentChunk.chunk_index.asc())
+    )
+    return list(result.scalars().all())

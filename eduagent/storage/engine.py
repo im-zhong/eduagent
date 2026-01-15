@@ -1,6 +1,7 @@
 """Database engine and session management."""
 
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine, create_engine
@@ -65,10 +66,20 @@ def create_async_session_factory(
     return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession]:
-    """Get async session for dependency injection."""
+@asynccontextmanager
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get async session for dependency injection with automatic commit/rollback.
+
+    On success: commits before yielding
+    On exception: rolls back and re-raises
+    """
     async with async_session_maker() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def create_tables_for_module(base: type[DeclarativeBase]) -> None:
