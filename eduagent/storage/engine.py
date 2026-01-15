@@ -1,4 +1,5 @@
 """Database engine and session management."""
+
 from collections.abc import AsyncGenerator
 
 from pydantic import BaseModel, Field
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import Pool
 
@@ -41,7 +43,11 @@ def create_async_pgsql_engine(
     async_url = db_settings.sqlalchemy_url.replace(
         "postgresql+psycopg", "postgresql+asyncpg"
     )
-    return create_async_engine(async_url, poolclass=poolclass)
+    # 我艹！！真的是这样！session复用connection就会出现这样的问题！
+    # anyio的event loop是每个测试都会创建一个，而asyncio就只有一个eventloop，然后async engine又只能绑定到一个event loop上
+    # 这两个问题叠加导致的单元测试一直失败
+    # nullpool的意思就是不会有复用的连接池，每个sql session的执行都会创建一个新的tcp connectino，这样就很慢，但是很安全
+    return create_async_engine(async_url, poolclass=NullPool)
 
 
 async_engine = create_async_pgsql_engine(settings.database)

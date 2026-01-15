@@ -17,6 +17,10 @@ from eduagent.storage.engine import async_engine, create_tables_for_module
 
 # --------------------
 from .endpoints import api_routers
+from .exception_handlers import (
+    global_exception_handler,
+    http_exception_handler,
+)
 
 api_logger = get_logger(__name__, component="api.core")
 
@@ -90,6 +94,10 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
+# Register global exception handlers
+api.add_exception_handler(Exception, global_exception_handler)
+api.add_exception_handler(500, http_exception_handler)
+
 # 4. 采用主分支的循环方式注册所有 API 路由
 security_dependencies = [Depends(require_service_token)]
 
@@ -118,6 +126,7 @@ async def root() -> dict[str, str]:
 async def health_check() -> dict[str, str]:
     api_logger.debug("Health check endpoint requested")
     return {"status": "healthy", "service": "eduagent-api"}
+
 
 @api.get("/api/v1/version", include_in_schema=False)
 async def version_check() -> dict[str, str]:

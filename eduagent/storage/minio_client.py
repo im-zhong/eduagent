@@ -2,6 +2,8 @@
 import asyncio
 from datetime import datetime
 from functools import partial
+from io import BytesIO
+from typing import BinaryIO
 
 from minio import Minio
 from pydantic import BaseModel, Field
@@ -87,21 +89,74 @@ class MinIOStorage:
 
     async def upload_file(
         self,
-        file_data: bytes,
+        file_data: BinaryIO,
         object_name: str,
         content_type: str,
+        length: int,
     ) -> None:
         """Upload a file to MinIO.
+
+        DESIGN CHOICE: Accept BinaryIO instead of bytes
+
+        Why BinaryIO (file-like object) over bytes:
+
+        1. Memory Efficiency:
+           - bytes: Entire file loaded into memory before upload
+           - BinaryIO: Enables streaming, only chunks held in memory
+           - For large files (>100MB), bytes causes OOM errors
+
+        2. Alignment with FastAPI:
+           - UploadFile.file is already a SpooledTemporaryFile (BinaryIO)
+           - Passing bytes requires reading entire file first (await file.read())
+           - Direct pass of UploadFile.file is more efficient
+
+        3. No Redundant Wrapping:
+           - bytes would need BytesIO(bytes) to satisfy MinIO API
+           - BinaryIO eliminates this extra conversion step
+
+        4. Thread Safety with run_in_executor:
+           - The file object passed must be thread-safe for run_in_executor
+           - For async file objects (UploadFile), use .file attribute which is sync
+           - For in-memory data, use BytesIO (creates thread-safe copy)
+           - For disk files, use open() with mode='rb' (sync file is thread-safe)
 
         Uses run_in_executor to avoid blocking the event loop.
 
         Args:
-            file_data: File content as bytes
+            file_data: File object with read() method (BinaryIO interface)
+                      Must be thread-safe for executor usage
             object_name: Object name in MinIO
             content_type: MIME content type
+            length: File size in bytes (required by MinIO's put_object)
 
         Raises:
             Exception: If upload fails
+
+        Example usage:
+            # From FastAPI UploadFile (recommended for HTTP uploads)
+            await upload_file(
+                file_data=upload_file.file,
+                object_name="doc.txt",
+                content_type="text/plain",
+                length=upload_file.size,
+            )
+
+            # From in-memory bytes
+            await upload_file(
+                file_data=BytesIO(b"content"),
+                object_name="doc.txt",
+                content_type="text/plain",
+                length=len(b"content"),
+            )
+
+            # From disk file
+            with open("file.txt", "rb") as f:
+                await upload_file(
+                    file_data=f,
+                    object_name="doc.txt",
+                    content_type="text/plain",
+                    length=os.path.getsize("file.txt"),
+                )
         """
         try:
             await self.ensure_bucket_exists()
@@ -115,7 +170,7 @@ class MinIOStorage:
                     self.config.bucket,
                     object_name,
                     file_data,
-                    len(file_data),
+                    length,
                     content_type=content_type,
                     metadata={
                         "X-Amz-Meta-Uploaded-At": datetime.utcnow().isoformat(),

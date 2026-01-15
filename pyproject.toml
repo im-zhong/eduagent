@@ -9,7 +9,7 @@ dependencies = [
     "fastapi>=0.116.1",
     "asyncpg>=0.29.0",
     "PyJWT>=2.8.0",
-    "httpx>=0.28.1",
+    "httpx[http2]>=0.28.1",
     "loguru>=0.7.3",
     "pandas>=2.2.0",
     "pandas-stubs>=2.3.2.250827",
@@ -47,11 +47,11 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.13.0",
 ]
+test = ["httpx>=0.28.1"]
 
 [tool.pytest.ini_options]
 # norecursedirs = ["data", ".git", ".venv", "dist", "build", "node_modules"]
 testpaths = ["tests"] # only detect tests on the tests dir
-asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests (requires external services)",
 ]
@@ -100,7 +100,7 @@ markers = [
 #   /home/zhangzhong/eduagent/tests/unit/test_api_key.py:1:8 - error: Stub file not found for "zhipuai" (reportMissingTypeStubs)
 #   /home/zhangzhong/eduagent/tests/unit/test_api_key.py:2:6 - error: Stub file not found for "zhipuai.types.chat.chat_completion" (reportMissingTypeStubs)
 # 2 errors, 0 warnings, 0 informations
-reportMissingTypeStubs = false
+# reportMissingTypeStubs = false
 
 [tool.setuptools]
 packages = ["eduagent"]
