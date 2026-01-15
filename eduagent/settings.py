@@ -89,6 +89,16 @@ class MilvusConfig(BaseModel):
     dim: int = 1536
 
 
+# TODO(zhangzhong): move module-specific settings into their own modules and
+# aggregate them here to reduce coupling (e.g., BGE, retrieval).
+class BGEConfig(BaseModel):
+    """BGE embedding service configuration."""
+
+    # TODO(zhangzhong): move BGE service base URL into env/config for production.
+    base_url: str = "http://211.81.248.218:12214"
+    timeout_seconds: float = Field(default=30.0, gt=0)
+
+
 class MinioConfig(BaseModel):
     """MinIO 对象存储配置"""
 
@@ -130,6 +140,7 @@ class Settings(BaseModel):
     redis: RedisConfig = Field(default_factory=RedisConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
     milvus: MilvusConfig = Field(default_factory=MilvusConfig)
+    bge: BGEConfig = Field(default_factory=BGEConfig)
     minio: MinioConfig = Field(default_factory=MinioConfig)
     service_auth: ServiceAuthConfig = Field(default_factory=ServiceAuthConfig)
     quiz_workflow: QuizWorkflowSettings = Field(default_factory=QuizWorkflowSettings)
