@@ -9,11 +9,12 @@ import json
 
 from langchain.messages import HumanMessage
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import BaseModel
 
 from eduagent.agents.chat import get_config
 
 
-class AgentMessage:
+class AgentMessage(BaseModel):
     """Model for agent chat message input.
 
     Attributes:
@@ -25,11 +26,6 @@ class AgentMessage:
     user_id: str
     thread_id: str
     message: str
-
-    def __init__(self, user_id: str, thread_id: str, message: str) -> None:
-        self.user_id = user_id
-        self.thread_id = thread_id
-        self.message = message
 
 
 async def agent_chat(agent: CompiledStateGraph, message: AgentMessage):
