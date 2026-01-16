@@ -11,14 +11,14 @@ Architecture: Linear router to agent nodes for quick prototyping.
 from __future__ import annotations
 
 from enum import Enum
+import json
 from typing import Any
 
 from langchain.messages import HumanMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
-from eduagent.agents.chat import get_agent, MessagesState
-from eduagent.llm import get_chat_model
+from eduagent.agents.chat import MessagesState, get_config
 from eduagent.quiz.graph import run_quiz_generation_workflow
 from eduagent.quiz.models import QuizGenerationRequest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -204,6 +204,45 @@ async def quiz_agent_node(
 # ============ Graph Builder ============
 
 
+async def unified_agent_chat(unified_graph, message, session):
+    """Stream unified chat with intent routing.
+
+    Args:
+        unified_graph: Compiled unified chat graph
+        message: User message with user_id and thread_id
+        session: Database session for quiz agent
+
+    Yields:
+        SSE tokens for streaming response
+
+    Note:
+        Routes to chat or quiz agent based on keyword intent detection.
+        Uses astream with streaming_mode="messages" for token streaming.
+    """
+    config = get_config(user_id=message.user_id, thread_id=message.thread_id)
+
+    state: UnifiedChatState = {
+        "messages": [HumanMessage(content=message.message)],
+        "intent": None,
+        "workspace": {},
+        "llm_calls": 0,
+    }
+
+    # Stream messages from the graph using streaming_mode="messages"
+    async for chunk in unified_graph.astream(
+        state,
+        stream_mode="messages",
+        config=config,
+    ):
+        # chunk is a list of Message objects when streaming_mode="messages"
+        messages = chunk if isinstance(chunk, list) else [chunk]
+
+        for msg in messages:
+            # Only yield AI messages (not Human or System messages)
+            if isinstance(msg, AIMessage) and msg.content:
+                yield f"data: {json.dumps({'token': msg.content, 'workspace': {}})}\n\n"
+
+
 def build_unified_chat_graph(
     agent: CompiledStateGraph, session: AsyncSession | None = None
 ) -> CompiledStateGraph:
@@ -222,14 +261,19 @@ def build_unified_chat_graph(
     workflow = StateGraph(UnifiedChatState)
 
     workflow.add_node("intent_router", intent_router_node)
-    workflow.add_node(
-        "chat_agent",
-        lambda state: chat_agent_node(state, agent),
-    )
-    workflow.add_node(
-        "quiz_agent",
-        lambda state: quiz_agent_node(state, session) if session else state,
-    )
+
+    # Use wrapper function to pass agent to async node
+    async def chat_agent_wrapper(state: UnifiedChatState) -> UnifiedChatState:
+        return await chat_agent_node(state, agent)
+
+    # Use wrapper function to pass session to async node
+    async def quiz_agent_wrapper(state: UnifiedChatState) -> UnifiedChatState:
+        if session:
+            return await quiz_agent_node(state, session)
+        return {"messages": [AIMessage(content="Quiz agent not available (no database session)")]}
+
+    workflow.add_node("chat_agent", chat_agent_wrapper)
+    workflow.add_node("quiz_agent", quiz_agent_wrapper)
 
     workflow.add_edge(START, "intent_router")
     workflow.add_conditional_edges(

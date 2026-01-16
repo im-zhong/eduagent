@@ -1,118 +1,48 @@
-"""Docstring for chatbot.api."""
+"""Chat API endpoints for agent interactions.
 
-# 2025/12/14
-# zhangzhong
-
-## Authentication
-# https://docs.streamlit.io/develop/concepts/connections/authentication
-# https://docs.streamlit.io/develop/tutorials/authentication/google
-
-# step 1:
-# 为了用OCID，google cloud跟我要支付信息，wechat跟我要网站截图。。。
-# https://open.weixin.qq.com/cgi-bin/appcreate?t=manage/createWeb&type=app&lang=zh_CN&token=9f69eada3ff04a80717b45f15db3c105eb2f5b24
-# 微信的这个可以搞一下，刚好我有一个网站，用streamlit搞上玩一玩。
-
+This module provides REST API endpoints for chatting with the knowledge agent,
+including thread management, message streaming, and history retrieval.
+"""
 from __future__ import annotations
 
-
-# try fastapi streaming response
-# https://fastapi.tiangolo.com/advanced/custom-response/#streamingresponse
-
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-import asyncio
 import json
+from uuid import uuid4
+
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Annotated
-from eduagent.llm import get_chat_model
+
 from eduagent.agents.chat import (
-    get_agent,
-    get_config,
-    get_threads_for_user,
     get_all_history,
+    get_threads_for_user,
     init_new_agent_thread,
-    ensure_user_threads_table,
     insert_user_thread,
 )
-from eduagent.unified_chat.prototype import build_unified_chat_graph
-from langchain.messages import HumanMessage
-# from eduagent.agents.chat import MessagesState
+from eduagent.agents.chat_service import AgentMessage, agent_chat
+from eduagent.llm import get_chat_model
+from eduagent.unified_chat.prototype import unified_agent_chat
 
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from contextlib import asynccontextmanager
-import uuid
-from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    UploadFile,
-    status,
-)
-from fastapi import Request
 
+# Get current thread history if any
 llm = get_chat_model()
-
-
 router = APIRouter(prefix="/chat", tags=["Knowledge Chat Agent"])
 
 
-class AgentMessage(BaseModel):
-    user_id: str
-    thread_id: str
-    message: str
-
-
-async def agent_chat(agent, message: AgentMessage):
-    # each time we call agent, we should get the snapshot of it, and resotre the messages
-    # get the latest state
-
-    # async with AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer:
-    # with PostgresSaver.from_conn_string(DB_URI) as checkpointer:
-    config = get_config(user_id=message.user_id, thread_id=message.thread_id)
-    # checkpoint = agent.get_state(config=config)
-    # 其实需要做的事情就是把memory里面的消息放到agent的state里面吧
-    # state = MessagesState(**checkpoint.values)
-    # 在最开始的时候 checkpoint里面是空的
-    # ！！！ 我们不需要手动管理，checkpoint会自动做persistence！！！
-    # print("checkpoint: ", checkpoint)
-    # if not checkpoint.values:
-    #     async for chunk in agent.astream(
-    #         input={"messages": [HumanMessage(message)]},
-    #         stream_mode="messages",
-    #         # 每次调用agent都需要传入config！
-    #         # 这样才能记录聊天历史
-    #         config=config,
-    #     ):
-    #         yield f"data: {json.dumps({'token': chunk[0].content})}\n\n"
-    # else:
-    #     async for chunk in agent.astream(
-    #         input={"messages": checkpoint.values["messages"] + [message]},
-    #         stream_mode="messages",
-    #         config=config,
-    #     ):
-    #         yield f"data: {json.dumps({'token': chunk[0].content})}\n\n"
-    # 我擦！真的！！！牛逼呀，这样就更简单了，相比于没有checkpoint的写法，实际上就只多了一个config参数而已
-    async for chunk in agent.astream(
-        input={"messages": [HumanMessage(content=message.message)]},
-        stream_mode="messages",
-        config=config,
-    ):
-        yield f"data: {json.dumps({'token': chunk[0].content})}\n\n"
-
-
 class UserMessage(BaseModel):
+    """Model for direct LLM chat messages."""
+
     messages: list
 
 
 class NewChatRequest(BaseModel):
+    """Model for creating a new chat thread."""
+
     user_id: str
     system_prompt: str | None = None
 
 
 async def llm_chat(input: UserMessage):
+    """Stream response directly from LLM (bypassing agent)."""
     async for chunk in llm.astream(input=input.messages):
         yield f"data: {json.dumps({'token': chunk.content})}\n\n"
 
@@ -196,12 +126,20 @@ async def llm_chat(input: UserMessage):
 # ===========================
 
 
-# in seperate router, we could not access the global fastapi app object
-# so use the request.app 永远指向当前运行的 FastAPI 实例, Request 是 FastAPI 注入的
+# In separate router, we could not access the global fastapi app object
+# So use the request.app which always points to the running FastAPI instance
+# Request is injected by FastAPI
+
+
 @router.post("/new-chat")
-async def new_chat(req: NewChatRequest, request: Request):
+async def new_chat(req: NewChatRequest, request: Request) -> dict[str, str]:
+    """Create a new chat thread.
+
+    Creates a new thread ID, stores it in the database,
+    and initializes it with an optional system prompt.
+    """
     app = request.app
-    thread_id = str(uuid.uuid4())
+    thread_id = str(uuid4())
     await insert_user_thread(app.state.conn, req.user_id, thread_id)
     await init_new_agent_thread(
         agent=app.state.agent,
@@ -213,8 +151,12 @@ async def new_chat(req: NewChatRequest, request: Request):
 
 
 @router.post("/agent-chat")
-def do_agent_chat(input: AgentMessage, request: Request):
-    # print("get user prompt", input.model_dump())
+def do_agent_chat(input: AgentMessage, request: Request) -> StreamingResponse:
+    """Send a message to the agent and stream the response.
+
+    Streams the agent's response using Server-Sent Events (SSE) format.
+    The agent maintains conversation history using the thread_id.
+    """
     app = request.app
     return StreamingResponse(
         agent_chat(app.state.agent, input),
@@ -228,6 +170,10 @@ def do_agent_chat(input: AgentMessage, request: Request):
 
 @router.get("/all-chat-threads")
 async def get_chat_history(user_id: str, request: Request) -> list[str]:
+    """Get all chat threads for a user.
+
+    Returns a list of thread IDs for the given user, ordered by creation time.
+    """
     app = request.app
     threads = await get_threads_for_user(conn=app.state.conn, user_id=user_id)
     return threads
@@ -237,8 +183,12 @@ async def get_chat_history(user_id: str, request: Request) -> list[str]:
 async def get_thread_chat_messages(
     user_id: str, thread_id: str, request: Request
 ) -> list[dict]:
+    """Get all messages in a specific thread.
+
+    Returns the conversation history as a list of messages with
+    role ("user", "assistant", "system") and content.
+    """
     app = request.app
-    # return {role:"", content:""}
     messages = await get_all_history(
         agent=app.state.agent, user_id=user_id, thread_id=thread_id
     )
@@ -248,56 +198,17 @@ async def get_thread_chat_messages(
 
 @router.get("/new-chat")
 async def get_new_chat(user_id: str, request: Request) -> str:
+    """Create a new chat thread (simpler version without system prompt)."""
     app = request.app
-    thread_id = str(uuid.uuid4())
+    thread_id = str(uuid4())
     await init_new_agent_thread(
         agent=app.state.agent, user_id=user_id, thread_id=thread_id
     )
     return thread_id
 
 
-# ============ Unified Chat Endpoints ============
-
-
-async def unified_agent_chat(unified_graph, message: AgentMessage, session):
-    """Stream unified chat with intent routing.
-
-    Args:
-        unified_graph: Compiled unified chat graph
-        message: User message with user_id and thread_id
-        session: Database session for quiz agent
-
-    Yields:
-        SSE tokens for streaming response
-
-    Note:
-        Routes to chat or quiz agent based on keyword intent detection.
-    """
-    config = get_config(user_id=message.user_id, thread_id=message.thread_id)
-
-    # Get current thread history if any
-    from eduagent.unified_chat.prototype import UnifiedChatState
-    state: UnifiedChatState = {
-        "messages": [HumanMessage(content=message.message)],
-        "intent": None,
-        "workspace": {},
-        "llm_calls": 0,
-    }
-
-    async for chunk in unified_graph.astream(
-        state,
-        stream_mode="messages",
-        config=config,
-    ):
-        # chunk[0] is the list of messages, chunk[0][-1] is the new message
-        messages = chunk[0]
-        if messages:
-            new_message = messages[-1]
-            yield f"data: {json.dumps({'token': new_message.content, 'workspace': chunk[-1].get('workspace', {})})}\n\n"
-
-
 @router.post("/unified-chat")
-def do_unified_agent_chat(input: AgentMessage, request: Request):
+def do_unified_agent_chat(input: AgentMessage, request: Request) -> StreamingResponse:
     """Unified chat endpoint with intent-based agent routing.
 
     Routes to different agents based on keyword detection:
@@ -305,14 +216,13 @@ def do_unified_agent_chat(input: AgentMessage, request: Request):
     - Everything else → Chat agent
 
     Returns streaming response with tokens and workspace artifacts.
+
+    Note:
+        The session parameter is None for chat agent to work.
+        Full implementation will include database session for quiz agent.
     """
     app = request.app
-
-    # Build unified graph with chat agent
-    # Note: session is None for chat agent to work, will be handled in full implementation
-    unified_graph = build_unified_chat_graph(
-        agent=app.state.agent, session=None
-    )
+    unified_graph = getattr(app.state, "unified_chat_graph", None)
 
     return StreamingResponse(
         unified_agent_chat(unified_graph, input, None),
