@@ -3,11 +3,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
-
-class Base(DeclarativeBase):
-    """Base class for document models."""
+# Use the global Base class from storage module
+# This enables cross-module foreign key resolution (e.g., quiz.doc_id -> source_document.id)
+from eduagent.storage.models import Base
 
 
 class SourceDocument(Base):

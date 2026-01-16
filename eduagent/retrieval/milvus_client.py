@@ -101,6 +101,8 @@ class MilvusClient:
                 sparse_vectors,
             ]
         )
+        # Flush to ensure data is persisted and searchable
+        collection.flush()
 
     def dense_search(
         self,
@@ -189,3 +191,21 @@ class MilvusClient:
             )
             for hit in hits
         ]
+
+    def delete_document_chunks(
+        self,
+        collection: Collection,
+        *,
+        doc_id: int,
+    ) -> None:
+        """Delete all chunks for a document from Milvus.
+
+        Args:
+            collection: The Milvus collection
+            doc_id: The document ID whose chunks should be deleted
+
+        Note:
+            This uses expression-based delete to remove all entities
+            matching the doc_id.
+        """
+        collection.delete(f"doc_id == {doc_id}")

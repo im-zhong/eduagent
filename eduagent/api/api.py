@@ -7,12 +7,13 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from eduagent.api.security import require_service_token
-from eduagent.documents.models import Base as DocumentsBase
 from eduagent.logger import get_logger
-from eduagent.storage.engine import async_engine, create_tables_for_module
+from eduagent.storage.engine import async_engine, create_all_tables
+from eduagent.storage.models import Base
 from eduagent.settings import settings
 from eduagent.llm import get_chat_model
 from eduagent.agents.chat import get_agent, ensure_user_threads_table
+from eduagent.unified_chat.graph import build_unified_chat_graph
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 # from eduagent.user.models import Base
 # from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -68,9 +69,20 @@ api_logger = get_logger(__name__, component="api.core")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    # Create database tables for documents module
-    api_logger.info("Creating database tables for documents module")
-    await create_tables_for_module(DocumentsBase)
+    # Architecture note: Single global Base class
+    # -------------------------------------------
+    # All modules (documents, quiz, etc.) use a shared Base class from
+    # eduagent.storage.models. This enables:
+    # - Cross-module foreign keys (e.g., quiz.doc_id -> source_document.id)
+    # - Simple table creation with Base.metadata.create_all()
+    # - Proper FK resolution during ORM flush operations
+    #
+    # Each module still owns its models, just not the Base class.
+
+    # Create all database tables
+    api_logger.info("Creating database tables")
+    await create_all_tables()
+
     api_logger.info("Initializing LangGraph checkpointer and chat agent")
     conn_str = (
         "postgresql://"
@@ -83,6 +95,11 @@ async def lifespan(app: FastAPI):
         await ensure_user_threads_table(checkpointer.conn)
         agent = get_agent(get_chat_model(), checkpointer)
         app.state.agent = agent
+        # Build unified chat graph with checkpointer
+        # Graph is built once at startup; runtime dependencies passed via config
+        app.state.unified_chat_graph = build_unified_chat_graph(
+            checkpointer=checkpointer
+        )
         app.state.conn = checkpointer.conn
         api_logger.info("API startup complete")
         yield

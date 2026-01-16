@@ -4,11 +4,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-class Base(DeclarativeBase):
-    """Base class for quiz models."""
+# Use the global Base class from storage module
+# This enables cross-module foreign key resolution (quiz.doc_id -> source_document.id)
+from eduagent.storage.models import Base
 
 
 # ============ SQLAlchemy Models ============

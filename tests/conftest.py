@@ -9,13 +9,11 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-from eduagent.documents.models import Base as DocumentsBase
-from eduagent.quiz.models import Base as QuizBase
 from eduagent.settings import settings
 from eduagent.storage.engine import (
     get_async_session,
     async_session_ctx,
-    create_tables_for_module,
+    create_all_tables,
     async_engine,
 )
 from eduagent.storage.minio_client import MinIOConfig, MinIOStorage
@@ -26,27 +24,13 @@ async def create_database_tables():
     """Create database tables for integration tests.
 
     This fixture runs once per test session to ensure all required
-    tables exist before tests start. Each module owns its own Base
-    class for table management.
+    tables exist before tests start.
 
-    Note: When creating tables, we need to handle foreign key constraints
-    across modules (e.g., quiz.doc_id references source_document.id).
-    We create all tables by combining both metadatas to ensure proper
-    foreign key resolution.
+    Uses the global Base class from eduagent.storage.models which all
+    feature modules inherit from. This ensures cross-module foreign keys
+    work correctly (e.g., quiz.doc_id -> source_document.id).
     """
-    # Combine both metadatas for table creation
-    # This ensures cross-module foreign keys are resolved correctly
-    from sqlalchemy import MetaData
-
-    combined_metadata = MetaData()
-    # Add all tables from both modules
-    for table in DocumentsBase.metadata.tables.values():
-        table.to_metadata(combined_metadata)
-    for table in QuizBase.metadata.tables.values():
-        table.to_metadata(combined_metadata)
-
-    async with async_engine.begin() as conn:
-        await conn.run_sync(combined_metadata.create_all)
+    await create_all_tables()
     yield
     # No cleanup needed - tables persist for test session
 

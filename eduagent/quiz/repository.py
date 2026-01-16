@@ -178,3 +178,74 @@ async def delete_quiz(session: AsyncSession, quiz_id: int) -> bool:
     """
     result = await session.execute(delete(Quiz).where(Quiz.id == quiz_id))
     return result.rowcount > 0
+
+
+async def delete_quizzes_by_doc(session: AsyncSession, doc_id: int) -> int:
+    """Delete all quizzes for a document.
+
+    Args:
+        session: Database session (commit handled by transactional dependency)
+        doc_id: Document ID whose quizzes should be deleted
+
+    Returns:
+        Number of quizzes deleted
+
+    Note:
+        QuizReference records are deleted automatically via CASCADE foreign key.
+    """
+    result = await session.execute(delete(Quiz).where(Quiz.doc_id == doc_id))
+    return result.rowcount
+
+
+async def get_quizzes_by_doc(session: AsyncSession, doc_id: int) -> Sequence[Quiz]:
+    """Get all quizzes for a document (alias for get_quizzes_by_document).
+
+    Args:
+        session: Database session
+        doc_id: Document ID to fetch quizzes for
+
+    Returns:
+        Sequence of quiz records, ordered by creation date (newest first)
+    """
+    return await get_quizzes_by_document(session, doc_id)
+
+
+async def get_quiz_with_references(
+    session: AsyncSession, quiz_id: int
+) -> QuizWithReferenceResponse | None:
+    """Get a quiz with its references by ID.
+
+    Args:
+        session: Database session
+        quiz_id: Quiz ID to fetch
+
+    Returns:
+        Quiz with references or None if not found
+
+    Note:
+        Uses unique() to deduplicate rows from joinedload.
+    """
+    result = await session.execute(
+        select(Quiz)
+        .options(joinedload(Quiz.quiz_references))
+        .where(Quiz.id == quiz_id)
+    )
+    quiz = result.scalars().unique().one_or_none()
+
+    if not quiz:
+        return None
+
+    refs = (
+        [ref.reference_text for ref in quiz.quiz_references]
+        if quiz.quiz_references
+        else []
+    )
+
+    return QuizWithReferenceResponse(
+        id=quiz.id,
+        doc_id=quiz.doc_id,
+        source=quiz.source,
+        question_json=quiz.question_json,
+        references=refs,
+        created_at=quiz.created_at,
+    )

@@ -15,6 +15,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import Pool
 
 from eduagent.settings import DatabaseConfig, settings
+from contextlib import asynccontextmanager
 
 
 class PGSQLSettings(BaseModel):
@@ -65,12 +66,33 @@ def create_async_session_factory(
     return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get async session for dependency injection with automatic commit/rollback.
+# FastAPI DB dependency notes:
+# - FastAPI supports async *generator* dependencies (yield-based) for setup/teardown.
+# - Code before `yield` runs before the request; code after `yield` runs after the request.
+# - This behavior is FastAPI-specific magic; Python itself does NOT treat async generators
+#   as async context managers.
+# - Therefore, async generator dependencies MUST ONLY be used via `Depends()`.
 
-    On success: commits before yielding
-    On exception: rolls back and re-raises
-    """
+# Testing (pytest) notes:
+# - pytest fixtures must own the resource lifecycle explicitly.
+# - You CANNOT use `async with get_async_session()` if it is an async generator.
+# - Do NOT reuse FastAPI generator dependencies directly inside pytest fixtures.
+# - Instead, either:
+#     (a) duplicate the sessionmaker logic in the fixture, or
+#     (b) factor shared logic into an @asynccontextmanager and reuse it.
+
+# Architecture rule of thumb:
+# - FastAPI owns dependency generators.
+# - pytest owns fixtures.
+# - Shared DB lifecycle logic belongs in an async context manager.
+# - Never nest or cross-use async generators across frameworks.
+
+
+# Testing safety:
+# - Committing in test sessions is OK for integration tests but unsafe for isolation.
+# - Preferred pattern is per-test transaction + rollback for clean, parallel-safe tests.
+@asynccontextmanager
+async def async_session_ctx():
     async with async_session_maker() as session:
         try:
             yield session
@@ -80,7 +102,49 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    # """Get async session for dependency injection with automatic commit/rollback.
+
+    # On success: commits before yielding
+    # On exception: rolls back and re-raises
+    # """
+    # async with async_session_maker() as session:
+    #     try:
+    #         yield session
+    #         await session.commit()
+    #     except Exception:
+    #         await session.rollback()
+    #         raise
+    async with async_session_ctx() as session:
+        yield session
+
+
 async def create_tables_for_module(base: type[DeclarativeBase]) -> None:
-    """Create tables for a specific module's Base class."""
+    """Create tables for a specific module's Base class.
+
+    Deprecated: All modules should now use the shared Base from
+    eduagent.storage.models. Use create_all_tables() instead.
+    """
     async with async_engine.begin() as conn:
         await conn.run_sync(base.metadata.create_all)
+
+
+async def create_all_tables() -> None:
+    """Create all database tables using the global Base class.
+
+    This is the recommended way to create tables. All modules (documents,
+    quiz, etc.) inherit from the shared Base in eduagent.storage.models,
+    which enables cross-module foreign keys to work correctly.
+
+    Architecture note:
+        - Single global Base class (eduagent.storage.models.Base)
+        - Each module owns its models (SourceDocument, Quiz, etc.)
+        - String-based FKs (e.g., "source_document.id") work correctly
+        - SQLAlchemy handles table creation order automatically
+    """
+    # Import Base to ensure all models are registered
+    from eduagent.storage.models import Base
+
+    # Create all tables - SQLAlchemy handles dependency ordering
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
