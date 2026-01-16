@@ -16,6 +16,7 @@ from eduagent.ui.api_client import EduAgentAPIClient
 from eduagent.ui.pages import (
     agent_chat,
     documents,
+    login,
     retrieval,
     unified_chat,
     # agent_workflow,
@@ -42,6 +43,7 @@ class UIDefs:
 
     # Navigation options with page handlers
     TEACHER_PAGES: list[tuple[str, Callable[[EduAgentAPIClient], None]]] = [
+        ("登录", login.render),
         ("总览", overview.render),
         ("文档管理", documents.render),
         ("检索与索引", retrieval.render),
