@@ -26,8 +26,8 @@ def render(client: EduAgentAPIClient) -> None:
 
         uploaded_file = st.file_uploader(
             "选择文档文件",
-            type=["pdf", "docx", "txt", "md"],
-            help="支持 PDF、DOCX、TXT、Markdown 格式",
+            type=["pdf", "doc", "docx", "txt", "md"],
+            help="支持 PDF、DOC、DOCX、TXT、Markdown 格式",
         )
 
         if uploaded_file is not None:

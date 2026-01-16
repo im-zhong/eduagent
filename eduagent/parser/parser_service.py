@@ -1,4 +1,5 @@
 """Async document parsing service based on pypandoc."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -30,9 +31,11 @@ def split_markdown(markdown: str) -> list[str]:
     return [part.strip() for part in parts if part.strip()]
 
 
+# TODO(zhangzhong): 应该使用文件的内容而不是文件后缀来判断文件的格式
 _MARKDOWN_SUFFIXES = {".md", ".markdown"}
 _PANDOC_FORMATS = {
     ".txt": "markdown",
+    ".doc": "doc",
     ".docx": "docx",
     ".pdf": "pdf",
 }
