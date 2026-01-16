@@ -114,6 +114,11 @@ class EduAgentAPIClient:
         endpoint = f"/api/v1/documents/{document_id}"
         return self._make_request(endpoint, "GET")
 
+    def parse_document(self, doc_id: int) -> dict[str, Any]:
+        """Parse a document into markdown and chunks."""
+        payload = {"doc_id": doc_id}
+        return self._make_request(defs.api.DOCUMENTS_PARSE, "POST", json_data=payload)
+
     def index_chunks(self, doc_id: int) -> dict[str, Any]:
         """Index parsed document chunks into Milvus.
 

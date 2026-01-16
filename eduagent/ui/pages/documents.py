@@ -26,8 +26,8 @@ def render(client: EduAgentAPIClient) -> None:
 
         uploaded_file = st.file_uploader(
             "选择文档文件",
-            type=["pdf", "doc", "docx", "txt", "md"],
-            help="支持 PDF、DOC、DOCX、TXT、Markdown 格式",
+            type=["pdf", "docx", "txt", "md"],
+            help="支持 PDF、DOCX、TXT、Markdown 格式",
         )
 
         if uploaded_file is not None:
@@ -85,6 +85,23 @@ def render(client: EduAgentAPIClient) -> None:
 
                         st.write(f"**创建时间:** {doc.get('created_at', 'unknown')}")
                         st.write(f"**更新时间:** {doc.get('updated_at', 'unknown')}")
+                        # Provide a manual parse action to generate chunks in Postgres.
+                        doc_id = doc.get("id")
+                        if isinstance(doc_id, int):
+                            if st.button(
+                                "解析并分段",
+                                key=f"parse_doc_{doc_id}",
+                                type="secondary",
+                            ):
+                                with st.spinner("正在解析并分段..."):
+                                    result = client.parse_document(doc_id)
+                                if "error" in result:
+                                    st.error(f"解析失败: {result['error']}")
+                                else:
+                                    st.success(
+                                        f"解析完成，分段数: {result.get('chunk_count', 0)}"
+                                    )
+                                    st.json(result)
         else:
             st.warning("未知的响应格式")
             st.json(result)

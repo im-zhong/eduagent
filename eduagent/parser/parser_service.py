@@ -35,7 +35,6 @@ def split_markdown(markdown: str) -> list[str]:
 _MARKDOWN_SUFFIXES = {".md", ".markdown"}
 _PANDOC_FORMATS = {
     ".txt": "markdown",
-    ".doc": "doc",
     ".docx": "docx",
     ".pdf": "pdf",
 }
