@@ -25,6 +25,7 @@ async def test_bge_embed() -> None:
     result = await client.embed(EmbeddingRequest(texts=["hello world"]))
     assert len(result.embeddings) == 1
     assert len(result.embeddings[0]) > 0
+    print(len(result.embeddings[0]))
 
 
 @pytest.mark.asyncio

@@ -46,3 +46,82 @@
 - **Early development stage**: Focus on integration tests and API endpoint tests
 - Skip unit tests for Pydantic model validation in early development (less flexible, high maintenance overhead)
 - Add unit tests for business logic only after the feature stabilizes
+
+### Integration Test Principles
+
+Integration tests verify that multiple components work together correctly. They differ from unit tests in that they test real interactions between services rather than isolated functions.
+
+**Core Principles:**
+
+1. **Self-Contained Setup**
+   - Each test must create its own test data (documents, chunks, etc.)
+   - Never assume external data exists in the database or Milvus
+   - Use fixtures to set up and tear down test data
+   - Example: Create a test document, parse it, index in Milvus, then test
+
+2. **End-to-End Testing**
+   - Test complete workflows, not individual components
+   - Verify data flows through all layers: API → Service → Graph → Database
+   - Example: `POST /api/v1/quiz/generate` → retrieve chunks → generate questions → save to DB
+
+3. **No Mocking**
+   - Use real database sessions via `get_async_session()`
+   - Use real Milvus for retrieval tests
+   - Use real LLM for generation tests
+   - This catches real integration issues that mocks would miss
+
+4. **Cleanup**
+   - Tests must clean up their own data after execution
+   - Use try-finally or pytest fixtures with cleanup
+   - Delete test documents, chunks, and quizzes from database and Milvus
+   - Log cleanup errors but don't fail the test
+
+**Example Structure:**
+
+```python
+@pytest.fixture
+async def setup_test_document(db_session) -> int:
+    """Set up test document in database and Milvus."""
+    # Create document record
+    doc = SourceDocument(filename="test.txt", ...)
+    db_session.add(doc)
+    await db_session.flush()
+    doc_id = doc.id
+
+    # Index chunks in Milvus
+    await doc_service.parse_and_store_document(...)
+
+    yield doc_id  # Provide to test
+
+    # Cleanup
+    await delete_quizzes_by_doc(db_session, doc_id)
+    await retrieval.delete_document_chunks(doc_id)
+    await db_session.delete(doc)
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_quiz_generation_end_to_end(
+    setup_test_document: int,
+    db_session
+):
+    """Test complete workflow with real services."""
+    request = QuizGenerationRequest(doc_id=doc_id, topic="Python", count=2)
+    response = await run_quiz_generation_workflow(request, db_session)
+
+    assert len(response.questions) > 0
+    assert len(response.quiz_ids) > 0
+```
+
+**What NOT to Do:**
+
+- ❌ Assume `doc_id=1` exists in the database
+- ❌ Mock the Milvus client or LLM
+- ❌ Test individual nodes in isolation (that's unit test territory)
+- ❌ Skip cleanup and leave test data in database
+
+**When to Use Integration Tests:**
+
+- Verifying LangGraph workflows with real database checkpointer
+- Testing RAG pipelines with real Milvus embeddings
+- End-to-end API testing with real HTTP calls
+- Multi-service workflows (quiz = retrieval + LLM + database)

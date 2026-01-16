@@ -86,7 +86,7 @@ class MilvusConfig(BaseModel):
     database: str = "default"
     collection: str = "eduagent_quiz_chunks"
     timeout: int = 30
-    dim: int = 1536
+    dim: int = 1024
     hybrid_dense_weight: float = Field(default=0.5, ge=0.0, le=1.0)
     hybrid_sparse_weight: float = Field(default=0.5, ge=0.0, le=1.0)
 

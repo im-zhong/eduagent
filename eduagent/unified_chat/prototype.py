@@ -8,6 +8,7 @@ This prototype demonstrates:
 
 Architecture: Linear router to agent nodes for quick prototyping.
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -235,12 +236,15 @@ async def unified_agent_chat(unified_graph, message, session):
         config=config,
     ):
         # chunk is a list of Message objects when streaming_mode="messages"
-        messages = chunk if isinstance(chunk, list) else [chunk]
+        # messages = chunk if isinstance(chunk, list) else [chunk]
+        msg = chunk[0]
+        if msg.content:
+            yield f"data: {json.dumps({'type': 'token', 'token': msg.content})}\n\n"
 
-        for msg in messages:
-            # Only yield AI messages (not Human or System messages)
-            if isinstance(msg, AIMessage) and msg.content:
-                yield f"data: {json.dumps({'token': msg.content, 'workspace': {}})}\n\n"
+        # for msg in messages:
+        #     # Only yield AI messages (not Human or System messages)
+        #     if isinstance(msg, AIMessage) and msg.content:
+        #         yield f"data: {json.dumps({'token': msg.content, 'workspace': {}})}\n\n"
 
 
 def build_unified_chat_graph(
@@ -270,7 +274,11 @@ def build_unified_chat_graph(
     async def quiz_agent_wrapper(state: UnifiedChatState) -> UnifiedChatState:
         if session:
             return await quiz_agent_node(state, session)
-        return {"messages": [AIMessage(content="Quiz agent not available (no database session)")]}
+        return {
+            "messages": [
+                AIMessage(content="Quiz agent not available (no database session)")
+            ]
+        }
 
     workflow.add_node("chat_agent", chat_agent_wrapper)
     workflow.add_node("quiz_agent", quiz_agent_wrapper)

@@ -8,9 +8,16 @@ from __future__ import annotations
 import json
 from uuid import uuid4
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# IMPORTANT: Import documents.models BEFORE quiz-related modules
+# This ensures source_document table is registered before quiz models
+# reference it via ForeignKey("source_document.id"), preventing:
+# "Table 'source_document' is already defined for this MetaData instance"
+from eduagent.documents import models as documents_models
 
 from eduagent.agents.chat import (
     get_all_history,
@@ -20,7 +27,8 @@ from eduagent.agents.chat import (
 )
 from eduagent.agents.chat_service import AgentMessage, agent_chat
 from eduagent.llm import get_chat_model
-from eduagent.unified_chat.prototype import unified_agent_chat
+from eduagent.storage.engine import get_async_session
+from eduagent.unified_chat.service import stream_unified_chat
 
 
 # Get current thread history if any
@@ -208,7 +216,11 @@ async def get_new_chat(user_id: str, request: Request) -> str:
 
 
 @router.post("/unified-chat")
-def do_unified_agent_chat(input: AgentMessage, request: Request) -> StreamingResponse:
+def do_unified_agent_chat(
+    input: AgentMessage,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+) -> StreamingResponse:
     """Unified chat endpoint with intent-based agent routing.
 
     Routes to different agents based on keyword detection:
@@ -218,14 +230,23 @@ def do_unified_agent_chat(input: AgentMessage, request: Request) -> StreamingRes
     Returns streaming response with tokens and workspace artifacts.
 
     Note:
-        The session parameter is None for chat agent to work.
-        Full implementation will include database session for quiz agent.
+        Runtime dependencies (chat_agent, session) passed via config at invoke time.
+        Chat agent is passed from app.state (built once at startup).
+        Database session is injected per-request using FastAPI Depends.
     """
     app = request.app
     unified_graph = getattr(app.state, "unified_chat_graph", None)
+    chat_agent = getattr(app.state, "agent", None)
 
     return StreamingResponse(
-        unified_agent_chat(unified_graph, input, None),
+        stream_unified_chat(
+            unified_graph=unified_graph,
+            user_id=input.user_id,
+            thread_id=input.thread_id,
+            message=input.message,
+            chat_agent=chat_agent,
+            session=session,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

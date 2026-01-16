@@ -1,4 +1,5 @@
 """Storage module for database and file storage."""
+
 from eduagent.storage.engine import (
     async_engine,
     async_session_maker,
@@ -6,6 +7,7 @@ from eduagent.storage.engine import (
     create_async_session_factory,
     create_async_session_factory as get_async_session,
     create_tables_for_module,
+    async_session_ctx,
 )
 
 __all__ = [
@@ -15,4 +17,5 @@ __all__ = [
     "create_async_session_factory",
     "get_async_session",
     "create_tables_for_module",
+    "async_session_ctx",
 ]
