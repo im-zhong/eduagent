@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pymilvus.exceptions import MilvusException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from eduagent.documents.repository import list_document_chunks
@@ -54,7 +55,14 @@ def _milvus_client() -> MilvusClient:
         ),
     )
     client = MilvusClient(config)
-    client.connect()
+    try:
+        client.connect()
+    except MilvusException as exc:
+        logger.error("Milvus connection failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Milvus is unavailable. Please ensure the service is running.",
+        ) from exc
     return client
 
 
