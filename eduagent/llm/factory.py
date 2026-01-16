@@ -11,6 +11,8 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
+from eduagent.llm.qwen import ChatQwen
+
 # def to_secret_str(s: str) -> SecretStr:
 #     """Convert the configured API key into a SecretStr for LangChain models."""
 #     api_key = settings.llm.api_key
@@ -69,6 +71,25 @@ def get_qwen_local_model() -> ChatOpenAI:
     )
 
 
+def get_qwen_local_model_with_no_think() -> ChatQwen:
+    """Create a ChatQwen client for Qwen's local API with think mode handling.
+
+    ChatQwen automatically:
+    - Adds <|no_think|> to system prompts to disable think mode
+    - Strips </think>... blocks from model outputs
+
+    Returns:
+        ChatQwen instance configured for local deployment.
+    """
+    return ChatQwen(
+        model="Qwen3-235B-A22B",
+        temperature=0.5,
+        api_key="NOKEY",  # type: ignore
+        # Qwen local deployment endpoint
+        base_url="http://222.30.145.85:8001/v1",
+    )
+
+
 def get_embedding_model() -> ZhipuAIEmbeddings:
     """Create a ZhipuAIEmbeddings client for semantic embedding generation."""
     return ZhipuAIEmbeddings(model="embedding-3", api_key=get_api_key())
@@ -87,9 +108,9 @@ def get_deepseek_chat_model() -> ChatDeepSeek:
 
 
 def get_chat_model() -> BaseChatModel:
-    # return get_deepseek_chat_model()
+    return get_deepseek_chat_model()
     # return get_zhipu_chat_model()
-    return get_qwen_local_model()
+    # return get_qwen_local_model()
 
 
 # def get_chat_model(*, temperature: float | None = None) -> ChatOpenAI:
